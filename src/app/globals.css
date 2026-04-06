@@ -1,0 +1,290 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Australian Flag Colour Palette ─────────────────────────────── */
+:root {
+  /* Backgrounds — deep navy graduating to flag-blue */
+  --navy-950: #000918;
+  --navy-900: #001028;
+  --navy-800: #001540;
+  --navy-700: #001E55;
+  --navy-600: #002B6E;
+  --flag-blue: #003DA5;
+
+  /* Wattle Gold — official Australian national colour */
+  --gold-300: #FFF080;
+  --gold-400: #FFE040;
+  --gold-500: #FFD200;
+  --gold-600: #CCB000;
+  --gold-700: #997F00;
+
+  /* Australian Green */
+  --jade-400: #00C65E;
+  --jade-500: #00A651;
+  --jade-600: #007A3D;
+
+  /* Flag Red (Pantone 186) */
+  --flag-red: #C8102E;
+
+  /* Text */
+  --text-primary: #F0F4FF;
+  --text-secondary: #8BB8DC;
+  --text-dim: #3D6080;
+
+  /* Surfaces / Borders */
+  --border: rgba(0, 61, 165, 0.55);
+  --surface: rgba(0, 21, 64, 0.7);
+  --surface-hover: rgba(0, 43, 110, 0.5);
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+body {
+  background-color: var(--navy-950);
+  color: var(--text-primary);
+  font-family: var(--font-outfit), sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Subtle noise texture */
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--navy-900); }
+::-webkit-scrollbar-thumb { background: var(--navy-600); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--gold-600); }
+
+/* Selection */
+::selection {
+  background: rgba(255, 210, 0, 0.25);
+  color: var(--gold-300);
+}
+
+/* ─── Glassmorphism card ─────────────────────────────────────────── */
+.glass-card {
+  background: rgba(0, 21, 64, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 61, 165, 0.45);
+  border-radius: 16px;
+}
+
+.glass-card-hover {
+  transition: all 0.3s ease;
+}
+.glass-card-hover:hover {
+  background: rgba(0, 43, 110, 0.6);
+  border-color: rgba(255, 210, 0, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 210, 0, 0.08);
+}
+
+/* ─── Text gradients ─────────────────────────────────────────────── */
+.text-gold-gradient {
+  background: linear-gradient(135deg, #FFF080 0%, #FFD200 50%, #CCB000 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-gold-soft {
+  background: linear-gradient(135deg, #FFE040 0%, #FFD200 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ─── Loading shimmer ────────────────────────────────────────────── */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(0, 43, 110, 0.2) 25%,
+    rgba(0, 61, 165, 0.35) 50%,
+    rgba(0, 43, 110, 0.2) 75%
+  );
+  background-size: 1000px 100%;
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0%   { background-position: -1000px 0; }
+  100% { background-position:  1000px 0; }
+}
+
+/* ─── Stagger helpers ────────────────────────────────────────────── */
+.stagger-1 { animation-delay: 0.1s; }
+.stagger-2 { animation-delay: 0.2s; }
+.stagger-3 { animation-delay: 0.3s; }
+.stagger-4 { animation-delay: 0.4s; }
+.stagger-5 { animation-delay: 0.5s; }
+.stagger-6 { animation-delay: 0.6s; }
+
+/* ─── Animation keyframes ────────────────────────────────────────── */
+@keyframes fadeUp {
+  0%   { opacity: 0; transform: translateY(24px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  0%   { opacity: 0; }
+  100% { opacity: 1; }
+}
+@keyframes scaleIn {
+  0%   { opacity: 0; transform: scale(0.96); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.animate-fade-up   { animation: fadeUp   0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-fade-in   { animation: fadeIn   0.5s ease both; }
+.animate-scale-in  { animation: scaleIn  0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* ─── Grid background ────────────────────────────────────────────── */
+.bg-grid {
+  background-image:
+    linear-gradient(rgba(0, 61, 165, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 61, 165, 0.1) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* ─── Gold border glow ───────────────────────────────────────────── */
+.border-gold-glow {
+  border: 1px solid rgba(255, 210, 0, 0.4);
+  box-shadow: 0 0 20px rgba(255, 210, 0, 0.06), inset 0 0 20px rgba(255, 210, 0, 0.02);
+}
+
+/* ─── Recharts ───────────────────────────────────────────────────── */
+.recharts-cartesian-grid-horizontal line,
+.recharts-cartesian-grid-vertical line {
+  stroke: rgba(0, 61, 165, 0.25);
+}
+.recharts-tooltip-wrapper { outline: none; }
+
+/* ─── Tabular numbers ────────────────────────────────────────────── */
+.font-mono-num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* ─── RTL support ────────────────────────────────────────────────── */
+[dir="rtl"] .text-left  { text-align: right; }
+[dir="rtl"] .text-right { text-align: left; }
+[dir="rtl"] .ml-auto    { margin-left: 0;    margin-right: auto; }
+[dir="rtl"] .mr-auto    { margin-right: 0;   margin-left: auto; }
+
+/* ─── Input fields ───────────────────────────────────────────────── */
+.input-field {
+  background: rgba(0, 16, 40, 0.85);
+  border: 1px solid rgba(0, 61, 165, 0.55);
+  color: var(--text-primary);
+  border-radius: 10px;
+  /* NO shorthand padding — let Tailwind p-* / pl-* / pt-* win */
+  padding-top: 10px;
+  padding-bottom: 10px;
+  padding-left: 14px;
+  padding-right: 14px;
+  width: 100%;
+  font-family: var(--font-outfit), sans-serif;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+}
+.input-field:focus {
+  border-color: rgba(255, 210, 0, 0.5);
+  background: rgba(0, 24, 60, 0.95);
+  box-shadow: 0 0 0 3px rgba(255, 210, 0, 0.08);
+}
+.input-field::placeholder { color: var(--text-dim); }
+.input-field option {
+  background: #001540;
+  color: var(--text-primary);
+}
+
+/* Icon-inset input wrapper — avoids absolute-position overlap */
+.input-icon-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.input-icon-wrap .input-field {
+  padding-inline-start: 2.5rem; /* 40px — room for icon */
+}
+.input-icon-wrap .input-icon {
+  position: absolute;
+  inset-inline-start: 0.875rem; /* 14px — logical for LTR & RTL */
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+
+/* ─── Buttons ────────────────────────────────────────────────────── */
+.btn-primary {
+  background: linear-gradient(135deg, #FFD200 0%, #CCB000 100%);
+  color: #000918;
+  font-weight: 700;
+  border-radius: 10px;
+  padding: 12px 28px;
+  font-family: var(--font-outfit), sans-serif;
+  font-size: 0.9rem;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.btn-primary:hover {
+  background: linear-gradient(135deg, #FFE040 0%, #D4B000 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(255, 210, 0, 0.3);
+}
+.btn-primary:active { transform: translateY(0); }
+
+.btn-secondary {
+  background: rgba(0, 43, 110, 0.3);
+  color: var(--text-secondary);
+  font-weight: 500;
+  border-radius: 10px;
+  padding: 10px 20px;
+  font-family: var(--font-outfit), sans-serif;
+  font-size: 0.875rem;
+  cursor: pointer;
+  border: 1px solid rgba(0, 61, 165, 0.45);
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.btn-secondary:hover {
+  background: rgba(0, 61, 165, 0.45);
+  border-color: rgba(0, 61, 165, 0.8);
+  color: var(--text-primary);
+}
