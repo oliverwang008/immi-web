@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import Header from "@/components/Header";
 import StatsCards from "@/components/StatsCards";
-import VisaDonutChart from "@/components/VisaDonutChart";
 import StatusBarChart from "@/components/StatusBarChart";
 import OccupationChart from "@/components/OccupationChart";
 import ProcessingTimeChart from "@/components/ProcessingTimeChart";
@@ -250,58 +249,8 @@ export default function HomePage() {
           <StatsCards stats={stats} loading={loading} />
         </section>
 
-        {/* EOI Invited vs Visa Granted summary */}
-        {stats && stats.total > 0 && (
-          <section className="glass-card p-6 mb-8 animate-fade-up">
-            <h3 className="font-display font-semibold text-[#F0F4FF] mb-1">Outcome Summary</h3>
-            <p className="text-xs text-[#3D6080] mb-6">
-              Based on {stats.total.toLocaleString()} submission{stats.total !== 1 ? "s" : ""}
-              {hasActiveFilter && " (filtered)"}
-            </p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-              {[
-                {
-                  label: t("home.stats.eoiInvited"),
-                  value: stats.eoiInvited,
-                  pct: ((stats.eoiInvited / stats.total) * 100).toFixed(1),
-                  color: "#8BB8DC",
-                },
-                {
-                  label: t("home.stats.visaGranted"),
-                  value: stats.granted,
-                  pct: ((stats.granted / stats.total) * 100).toFixed(1),
-                  color: "#00A651",
-                },
-                {
-                  label: "Unique Visa Types",
-                  value: Object.keys(stats.byVisa).length,
-                  pct: null,
-                  color: "#FFD200",
-                },
-              ].map((item) => (
-                <div
-                  key={item.label}
-                  className="text-center p-4 rounded-xl"
-                  style={{ background: `${item.color}08`, border: `1px solid ${item.color}20` }}
-                >
-                  <div className="text-3xl font-display font-bold mb-1" style={{ color: item.color }}>
-                    {item.value.toLocaleString()}
-                  </div>
-                  {item.pct !== null && (
-                    <div className="text-lg font-bold mb-1 opacity-60" style={{ color: item.color }}>
-                      {item.pct}%
-                    </div>
-                  )}
-                  <div className="text-xs text-[#8BB8DC]">{item.label}</div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
         {/* Charts */}
-        <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          <VisaDonutChart data={stats?.byVisa ?? {}} loading={loading} />
+        <section className="mb-6">
           <StatusBarChart data={stats?.byStatus ?? {}} loading={loading} />
         </section>
 
