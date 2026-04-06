@@ -5,7 +5,7 @@ import Link from "next/link";
 import Header from "@/components/Header";
 import StatsCards from "@/components/StatsCards";
 import VisaDonutChart from "@/components/VisaDonutChart";
-import StatusBarChart from "@/components/StatusBarChart";
+import MonthlyOutcomesChart from "@/components/MonthlyOutcomesChart";
 import OccupationChart from "@/components/OccupationChart";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { fetchSubmissions, aggregateStats, AggregatedStats, VisaSubmission } from "@/lib/firestore";
@@ -251,7 +251,11 @@ export default function HomePage() {
         {/* Charts */}
         <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           <VisaDonutChart data={stats?.byVisa ?? {}} loading={loading} />
-          <StatusBarChart data={stats?.byStatus ?? {}} loading={loading} />
+          <MonthlyOutcomesChart
+            eoiInvitedByMonth={stats?.eoiInvitedByMonth ?? {}}
+            grantedByMonth={stats?.grantedByMonth ?? {}}
+            loading={loading}
+          />
         </section>
 
         <section className="mb-6">

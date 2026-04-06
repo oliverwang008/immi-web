@@ -48,8 +48,10 @@ export interface AggregatedStats {
   granted: number;
   refused: number;
   inProgress: number;
-  processingTimes: Record<string, number[]>; // visa -> days from eoiLodgeDate (or eoi_submitted status) to grant_received
-  submissionsByMonth: Record<string, number>; // "YYYY-MM" -> count
+  processingTimes: Record<string, number[]>;
+  submissionsByMonth: Record<string, number>;
+  eoiInvitedByMonth: Record<string, number>;  // "YYYY-MM" -> count of EOI invites
+  grantedByMonth: Record<string, number>;      // "YYYY-MM" -> count of visas granted
 }
 
 export async function submitVisa(data: Omit<VisaSubmission, "id">): Promise<string> {
@@ -107,6 +109,8 @@ export function aggregateStats(submissions: VisaSubmission[]): AggregatedStats {
     inProgress: 0,
     processingTimes: {},
     submissionsByMonth: {},
+    eoiInvitedByMonth: {},
+    grantedByMonth: {},
   };
 
   for (const sub of submissions) {
@@ -129,9 +133,21 @@ export function aggregateStats(submissions: VisaSubmission[]): AggregatedStats {
     }
 
     // EOI Invited / Granted / other
-    if (sub.currentStatus === "grant_received") stats.granted++;
-    else if (sub.currentStatus === "eoi_invited") stats.eoiInvited++;
-    else stats.inProgress++;
+    if (sub.currentStatus === "grant_received") {
+      stats.granted++;
+      if (sub.statusDate) {
+        const m = sub.statusDate.slice(0, 7);
+        stats.grantedByMonth[m] = (stats.grantedByMonth[m] || 0) + 1;
+      }
+    } else if (sub.currentStatus === "eoi_invited") {
+      stats.eoiInvited++;
+      if (sub.statusDate) {
+        const m = sub.statusDate.slice(0, 7);
+        stats.eoiInvitedByMonth[m] = (stats.eoiInvitedByMonth[m] || 0) + 1;
+      }
+    } else {
+      stats.inProgress++;
+    }
 
     // Processing time: eoiLodgeDate (or eoi_submitted status) → grant_received
     if (sub.currentStatus === "grant_received" && sub.statusDate) {
