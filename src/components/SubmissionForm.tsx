@@ -48,7 +48,7 @@ function DatePicker({ value, onChange, max, min, hasError }: DatePickerProps) {
         max={max}
         min={min}
         onChange={(e) => onChange(e.target.value)}
-        onClick={(e) => e.stopPropagation()} // let the div handle it
+        onClick={(e) => { e.stopPropagation(); open(); }}
       />
     </div>
   );
