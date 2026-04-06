@@ -161,7 +161,11 @@ export type TranslationKey =
   | "submit.error.eoiInvitedBeforeGrant"
   | "submit.error.eoiLodgeBeforeInvited"
   | "submit.error.eoiLodgeBeforeGrant"
-  | "submit.status.eligibilityNotice";
+  | "submit.status.eligibilityNotice"
+  | "submit.status.visaApplicationDate"
+  | "submit.status.visaApplicationDateHint"
+  | "submit.error.visaAppAfterInvited"
+  | "submit.error.visaAppBeforeGrant";
 
 type Translations = Record<TranslationKey, string>;
 type AllTranslations = Record<Language, Translations>;
@@ -290,8 +294,8 @@ export const translations: AllTranslations = {
     "submit.terms.required": "You must agree to the terms and conditions to submit",
     "submit.status.eoiInvited": "EOI Invited (ITA Received)",
     "submit.status.visaGranted": "Visa Granted",
-    "submit.status.eoiLodgeDate": "EOI Lodge Date (Optional)",
-    "submit.status.eoiLodgeDateHint": "Date you submitted your Expression of Interest",
+    "submit.status.eoiLodgeDate": "EOI Submission Date (Optional)",
+    "submit.status.eoiLodgeDateHint": "Date you submitted your Expression of Interest online",
     "submit.status.eoiInvitedDate": "EOI Invited Date (Optional)",
     "submit.status.eoiInvitedDateHint": "Date you received your Invitation to Apply (ITA)",
     "home.stats.eoiInvited": "EOI Invited",
@@ -308,6 +312,10 @@ export const translations: AllTranslations = {
     "submit.error.eoiLodgeBeforeInvited": "Must be before EOI invited date",
     "submit.error.eoiLodgeBeforeGrant": "Must be before visa granted date",
     "submit.status.eligibilityNotice": "This tracker is for applicants who have already received an EOI Invitation (ITA) or had their Visa Granted.",
+    "submit.status.visaApplicationDate": "Visa Application Lodged Date (Optional)",
+    "submit.status.visaApplicationDateHint": "Date you lodged your visa application",
+    "submit.error.visaAppAfterInvited": "Must be after EOI invited date",
+    "submit.error.visaAppBeforeGrant": "Must be before visa granted date",
   },
   zh: {
     "nav.home": "数据看板",
@@ -450,6 +458,10 @@ export const translations: AllTranslations = {
     "submit.error.eoiLodgeBeforeInvited": "必须早于EOI受邀日期",
     "submit.error.eoiLodgeBeforeGrant": "必须早于签证批准日期",
     "submit.status.eligibilityNotice": "此追踪器适用于已收到EOI邀请（ITA）或已获得签证的申请人。",
+    "submit.status.visaApplicationDate": "签证申请递交日期（可选）",
+    "submit.status.visaApplicationDateHint": "您递交签证申请的日期",
+    "submit.error.visaAppAfterInvited": "必须晚于EOI受邀日期",
+    "submit.error.visaAppBeforeGrant": "必须早于签证批准日期",
   },
   hi: {
     "nav.home": "डैशबोर्ड",
@@ -592,6 +604,10 @@ export const translations: AllTranslations = {
     "submit.error.eoiLodgeBeforeInvited": "EOI आमंत्रण तारीख से पहले होनी चाहिए",
     "submit.error.eoiLodgeBeforeGrant": "वीज़ा प्रदान तारीख से पहले होनी चाहिए",
     "submit.status.eligibilityNotice": "यह ट्रैकर उन आवेदकों के लिए है जिन्हें पहले से EOI आमंत्रण (ITA) मिला है या जिनका वीज़ा स्वीकृत हो गया है।",
+    "submit.status.visaApplicationDate": "वीज़ा आवेदन जमा तारीख (वैकल्पिक)",
+    "submit.status.visaApplicationDateHint": "वह तारीख जब आपने वीज़ा आवेदन जमा किया",
+    "submit.error.visaAppAfterInvited": "EOI आमंत्रण तारीख के बाद होनी चाहिए",
+    "submit.error.visaAppBeforeGrant": "वीज़ा प्रदान तारीख से पहले होनी चाहिए",
   },
   tl: {
     "nav.home": "Dashboard",
@@ -734,6 +750,10 @@ export const translations: AllTranslations = {
     "submit.error.eoiLodgeBeforeInvited": "Dapat bago ang petsa ng EOI invited",
     "submit.error.eoiLodgeBeforeGrant": "Dapat bago ang petsa ng visa granted",
     "submit.status.eligibilityNotice": "Ang tracker na ito ay para sa mga aplikante na nakatanggap na ng EOI Invitation (ITA) o nagkaroon ng Visa Granted.",
+    "submit.status.visaApplicationDate": "Petsa ng Pag-lodge ng Visa Application (Opsyonal)",
+    "submit.status.visaApplicationDateHint": "Petsa na iniharap mo ang iyong aplikasyon sa visa",
+    "submit.error.visaAppAfterInvited": "Dapat pagkatapos ng petsa ng EOI invited",
+    "submit.error.visaAppBeforeGrant": "Dapat bago ang petsa ng visa granted",
   },
   vi: {
     "nav.home": "Bảng điều khiển",
@@ -876,6 +896,10 @@ export const translations: AllTranslations = {
     "submit.error.eoiLodgeBeforeInvited": "Phải trước ngày EOI được mời",
     "submit.error.eoiLodgeBeforeGrant": "Phải trước ngày cấp visa",
     "submit.status.eligibilityNotice": "Trình theo dõi này dành cho những người đã nhận được Lời mời EOI (ITA) hoặc đã được cấp Visa.",
+    "submit.status.visaApplicationDate": "Ngày Nộp Đơn Visa (Tùy chọn)",
+    "submit.status.visaApplicationDateHint": "Ngày bạn nộp đơn xin visa",
+    "submit.error.visaAppAfterInvited": "Phải sau ngày EOI được mời",
+    "submit.error.visaAppBeforeGrant": "Phải trước ngày cấp visa",
   },
   ne: {
     "nav.home": "ड्यासबोर्ड",
@@ -1018,6 +1042,10 @@ export const translations: AllTranslations = {
     "submit.error.eoiLodgeBeforeInvited": "EOI आमन्त्रण मितिभन्दा पहिले हुनु पर्छ",
     "submit.error.eoiLodgeBeforeGrant": "भिसा प्रदान मितिभन्दा पहिले हुनु पर्छ",
     "submit.status.eligibilityNotice": "यो ट्र्याकर ती आवेदकहरूका लागि हो जसले पहिले नै EOI निमन्त्रणा (ITA) प्राप्त गरेका छन् वा उनीहरूको भिसा स्वीकृत भएको छ।",
+    "submit.status.visaApplicationDate": "भिसा आवेदन दर्ता मिति (ऐच्छिक)",
+    "submit.status.visaApplicationDateHint": "तपाईंले भिसा आवेदन दर्ता गरेको मिति",
+    "submit.error.visaAppAfterInvited": "EOI आमन्त्रण मितिपछि हुनु पर्छ",
+    "submit.error.visaAppBeforeGrant": "भिसा प्रदान मितिभन्दा पहिले हुनु पर्छ",
   },
   ur: {
     "nav.home": "ڈیش بورڈ",
@@ -1160,6 +1188,10 @@ export const translations: AllTranslations = {
     "submit.error.eoiLodgeBeforeInvited": "EOI دعوت کی تاریخ سے پہلے ہونی چاہیے",
     "submit.error.eoiLodgeBeforeGrant": "ویزہ منظوری کی تاریخ سے پہلے ہونی چاہیے",
     "submit.status.eligibilityNotice": "یہ ٹریکر ان درخواست دہندگان کے لیے ہے جنہیں پہلے سے EOI دعوت نامہ (ITA) موصول ہو چکا ہے یا ان کا ویزہ منظور ہو گیا ہے۔",
+    "submit.status.visaApplicationDate": "ویزہ درخواست داخل کرنے کی تاریخ (اختیاری)",
+    "submit.status.visaApplicationDateHint": "وہ تاریخ جب آپ نے ویزہ درخواست جمع کی",
+    "submit.error.visaAppAfterInvited": "EOI دعوت کی تاریخ کے بعد ہونی چاہیے",
+    "submit.error.visaAppBeforeGrant": "ویزہ منظوری کی تاریخ سے پہلے ہونی چاہیے",
   },
 };
 

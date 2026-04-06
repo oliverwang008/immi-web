@@ -28,8 +28,9 @@ export interface VisaSubmission {
   statuses: StatusEntry[];    // legacy array kept for backward compat
   currentStatus: string;      // "eoi_invited" | "grant_received"
   statusDate?: string;        // ISO date of the current status event
-  eoiLodgeDate?: string;      // optional: date EOI was lodged
-  eoiInvitedDate?: string;    // optional: date EOI invited (for grant_received only)
+  eoiLodgeDate?: string;        // optional: date EOI was submitted
+  eoiInvitedDate?: string;      // optional: date EOI invited (for grant_received only)
+  visaApplicationDate?: string; // optional: date visa application was lodged (grant_received only)
   pointsScore?: Record<string, number>;
   totalPoints?: number;
   email?: string;

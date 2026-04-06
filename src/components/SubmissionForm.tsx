@@ -18,10 +18,11 @@ import clsx from "clsx";
 
 // ── Form state ─────────────────────────────────────────────────────────
 interface FormState {
-  currentStatus: string;   // "eoi_invited" | "grant_received" | ""
-  statusDate: string;      // required
-  eoiInvitedDate: string;  // optional – grant_received only
-  eoiLodgeDate: string;    // optional – both statuses
+  currentStatus: string;        // "eoi_invited" | "grant_received" | ""
+  statusDate: string;           // required
+  eoiInvitedDate: string;       // optional – grant_received only
+  visaApplicationDate: string;  // optional – grant_received only (between invited & grant)
+  eoiLodgeDate: string;         // optional – both statuses
   visaSubclass: string;
   sponsoringState: string;
   occupationCode: string;
@@ -36,6 +37,7 @@ const INITIAL_STATE: FormState = {
   currentStatus: "",
   statusDate: "",
   eoiInvitedDate: "",
+  visaApplicationDate: "",
   eoiLodgeDate: "",
   visaSubclass: "",
   sponsoringState: "",
@@ -68,6 +70,8 @@ export default function SubmissionForm() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
+  // Tracks which option index was selected per criterion (for display disambiguation)
+  const [pointsOptIdx, setPointsOptIdx] = useState<Record<string, number>>({});
   const occRef = useRef<HTMLDivElement>(null);
 
   const isPointsTested = POINTS_TESTED_VISAS.includes(form.visaSubclass);
@@ -134,6 +138,18 @@ export default function SubmissionForm() {
             newErrors.eoiInvitedDate = t("submit.error.dateFuture");
           } else if (form.statusDate && form.eoiInvitedDate >= form.statusDate) {
             newErrors.eoiInvitedDate = t("submit.error.eoiInvitedBeforeGrant");
+          }
+        }
+
+        if (form.visaApplicationDate) {
+          if (!isValidDate(form.visaApplicationDate)) {
+            newErrors.visaApplicationDate = t("submit.error.invalidDate");
+          } else if (form.visaApplicationDate > DATE_MAX) {
+            newErrors.visaApplicationDate = t("submit.error.dateFuture");
+          } else if (form.eoiInvitedDate && form.visaApplicationDate <= form.eoiInvitedDate) {
+            newErrors.visaApplicationDate = t("submit.error.visaAppAfterInvited");
+          } else if (form.statusDate && form.visaApplicationDate >= form.statusDate) {
+            newErrors.visaApplicationDate = t("submit.error.visaAppBeforeGrant");
           }
         }
 
@@ -209,6 +225,9 @@ export default function SubmissionForm() {
       if (form.currentStatus === "grant_received" && form.eoiInvitedDate) {
         statuses.push({ status: "eoi_invited", date: form.eoiInvitedDate });
       }
+      if (form.currentStatus === "grant_received" && form.visaApplicationDate) {
+        statuses.push({ status: "application_lodged", date: form.visaApplicationDate });
+      }
       statuses.push({ status: form.currentStatus, date: form.statusDate });
       statuses.sort((a, b) => a.date.localeCompare(b.date));
 
@@ -228,6 +247,8 @@ export default function SubmissionForm() {
         ...(form.eoiLodgeDate ? { eoiLodgeDate: form.eoiLodgeDate } : {}),
         ...(form.currentStatus === "grant_received" && form.eoiInvitedDate
           ? { eoiInvitedDate: form.eoiInvitedDate } : {}),
+        ...(form.currentStatus === "grant_received" && form.visaApplicationDate
+          ? { visaApplicationDate: form.visaApplicationDate } : {}),
         ...(isPointsTested && Object.keys(storedPoints).length
           ? { pointsScore: storedPoints, totalPoints } : {}),
         ...(form.email ? { email: form.email } : {}),
@@ -258,8 +279,7 @@ export default function SubmissionForm() {
           <CheckCircle2 size={32} className="text-[#00A651]" />
         </div>
         <h2 className="font-display text-2xl font-semibold text-[#F0F4FF] mb-3">{t("submit.success")}</h2>
-        <p className="text-[#8BB8DC] mb-8 leading-relaxed">{t("submit.successMsg")}</p>
-        <button onClick={reset} className="btn-primary mx-auto">{t("submit.anotherSubmit")}</button>
+        <p className="text-[#8BB8DC] leading-relaxed">{t("submit.successMsg")}</p>
       </div>
     );
   }
@@ -344,6 +364,7 @@ export default function SubmissionForm() {
                       currentStatus: opt.key,
                       statusDate: "",
                       eoiInvitedDate: "",
+                      visaApplicationDate: "",
                       eoiLodgeDate: "",
                     }));
                     setErrors({});
@@ -393,24 +414,43 @@ export default function SubmissionForm() {
                   {errors.statusDate && <p className="text-[#C8102E] text-[10px] mt-1">{errors.statusDate}</p>}
                 </div>
 
-                {/* Optional: EOI Invited Date — only for grant_received */}
+                {/* Optional date fields for grant_received */}
                 {form.currentStatus === "grant_received" && (
-                  <div className="p-4 rounded-xl border border-[rgba(0,61,165,0.3)] bg-[rgba(0,16,40,0.3)] animate-fade-in">
-                    <label className="text-sm font-medium text-[#8BB8DC] block mb-1">
-                      {t("submit.status.eoiInvitedDate")}
-                    </label>
-                    <p className="text-[10px] text-[#3D6080] mb-2">{t("submit.status.eoiInvitedDateHint")}</p>
-                    <DatePicker
-                      value={form.eoiInvitedDate}
-                      max={form.statusDate || DATE_MAX}
-                      hasError={!!errors.eoiInvitedDate}
-                      onChange={(v) => { setForm((f) => ({ ...f, eoiInvitedDate: v })); clearErr("eoiInvitedDate"); }}
-                    />
-                    {errors.eoiInvitedDate && <p className="text-[#C8102E] text-[10px] mt-1">{errors.eoiInvitedDate}</p>}
-                  </div>
+                  <>
+                    {/* EOI Invited Date */}
+                    <div className="p-4 rounded-xl border border-[rgba(0,61,165,0.3)] bg-[rgba(0,16,40,0.3)] animate-fade-in">
+                      <label className="text-sm font-medium text-[#8BB8DC] block mb-1">
+                        {t("submit.status.eoiInvitedDate")}
+                      </label>
+                      <p className="text-[10px] text-[#3D6080] mb-2">{t("submit.status.eoiInvitedDateHint")}</p>
+                      <DatePicker
+                        value={form.eoiInvitedDate}
+                        max={form.statusDate || DATE_MAX}
+                        hasError={!!errors.eoiInvitedDate}
+                        onChange={(v) => { setForm((f) => ({ ...f, eoiInvitedDate: v })); clearErr("eoiInvitedDate"); }}
+                      />
+                      {errors.eoiInvitedDate && <p className="text-[#C8102E] text-[10px] mt-1">{errors.eoiInvitedDate}</p>}
+                    </div>
+
+                    {/* Visa Application Date */}
+                    <div className="p-4 rounded-xl border border-[rgba(0,61,165,0.3)] bg-[rgba(0,16,40,0.3)] animate-fade-in">
+                      <label className="text-sm font-medium text-[#8BB8DC] block mb-1">
+                        {t("submit.status.visaApplicationDate")}
+                      </label>
+                      <p className="text-[10px] text-[#3D6080] mb-2">{t("submit.status.visaApplicationDateHint")}</p>
+                      <DatePicker
+                        value={form.visaApplicationDate}
+                        min={form.eoiInvitedDate || undefined}
+                        max={form.statusDate || DATE_MAX}
+                        hasError={!!errors.visaApplicationDate}
+                        onChange={(v) => { setForm((f) => ({ ...f, visaApplicationDate: v })); clearErr("visaApplicationDate"); }}
+                      />
+                      {errors.visaApplicationDate && <p className="text-[#C8102E] text-[10px] mt-1">{errors.visaApplicationDate}</p>}
+                    </div>
+                  </>
                 )}
 
-                {/* Optional: EOI Lodge Date — both statuses */}
+                {/* EOI Submission Date — both statuses */}
                 <div className="p-4 rounded-xl border border-[rgba(0,61,165,0.3)] bg-[rgba(0,16,40,0.3)]">
                   <label className="text-sm font-medium text-[#8BB8DC] block mb-1">
                     {t("submit.status.eoiLodgeDate")}
@@ -587,8 +627,16 @@ export default function SubmissionForm() {
                   {POINTS_CRITERIA.filter(
                     (c) => !c.applicableTo || c.applicableTo.includes(form.visaSubclass)
                   ).map((criterion) => {
-                    const currentVal = form.points[criterion.key];
-                    const selectVal = currentVal === UNSET_POINTS ? "" : String(currentVal);
+                    // Filter nomination options to the selected visa type
+                    const visibleOptions = criterion.key === "nomination"
+                      ? criterion.options.filter((opt) => {
+                          if (opt.value === 0) return true;
+                          if (opt.value === 5) return form.visaSubclass === "190";
+                          if (opt.value === 15) return form.visaSubclass === "491";
+                          return true;
+                        })
+                      : criterion.options;
+                    const selectedIdx = pointsOptIdx[criterion.key];
                     return (
                       <div key={criterion.key} className="grid grid-cols-1 sm:grid-cols-2 gap-2 items-center">
                         <label className="text-xs text-[#8BB8DC] font-medium">
@@ -596,12 +644,21 @@ export default function SubmissionForm() {
                         </label>
                         <select
                           className="input-field !py-2 text-sm"
-                          value={selectVal}
-                          onChange={(e) => updatePoints(criterion.key, e.target.value)}
+                          value={selectedIdx !== undefined ? String(selectedIdx) : ""}
+                          onChange={(e) => {
+                            const idx = e.target.value === "" ? undefined : Number(e.target.value);
+                            setPointsOptIdx((prev) => {
+                              const next = { ...prev };
+                              if (idx === undefined) delete next[criterion.key];
+                              else next[criterion.key] = idx;
+                              return next;
+                            });
+                            updatePoints(criterion.key, idx === undefined ? "" : String(visibleOptions[idx].value));
+                          }}
                         >
                           <option value="">{t("submit.points.selectOption")}</option>
-                          {criterion.options.map((opt) => (
-                            <option key={`${criterion.key}|${opt.value}|${opt.label}`} value={String(opt.value)}>
+                          {visibleOptions.map((opt, idx) => (
+                            <option key={`${criterion.key}|${idx}`} value={String(idx)}>
                               {opt.label}
                             </option>
                           ))}
@@ -629,11 +686,13 @@ export default function SubmissionForm() {
             )}
 
             {/* Optional email */}
-            <div className="mb-6">
-              <div className="flex items-center gap-2 mb-2">
+            <div className="mb-6 p-4 rounded-xl border border-[rgba(139,184,220,0.2)] bg-[rgba(139,184,220,0.04)]">
+              <div className="flex items-center gap-2 mb-1">
                 <Mail size={15} className="text-[#8BB8DC]" />
                 <label className="text-sm font-semibold text-[#F0F4FF]">{t("submit.email.label")}</label>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-[rgba(139,184,220,0.15)] text-[#8BB8DC] border border-[rgba(139,184,220,0.25)]">Newsletter</span>
               </div>
+              <p className="text-[10px] text-[#3D6080] mb-2 leading-relaxed">{t("submit.email.hint")}</p>
               <input
                 type="email"
                 className="input-field"
@@ -643,7 +702,6 @@ export default function SubmissionForm() {
                 autoComplete="email"
               />
               {errors.email && <p className="text-[#C8102E] text-xs mt-1">{errors.email}</p>}
-              <p className="text-[10px] text-[#3D6080] mt-1.5 leading-relaxed">{t("submit.email.hint")}</p>
             </div>
 
             {/* Terms */}
@@ -668,7 +726,14 @@ export default function SubmissionForm() {
                   )}
                 </div>
                 <div>
-                  <span className="text-sm font-semibold text-[#F0F4FF]">{t("submit.terms.label")}</span>
+                  <span className="text-sm font-semibold text-[#F0F4FF]">
+                    I agree to the{" "}
+                    <a href="/terms" target="_blank" rel="noopener noreferrer"
+                      className="text-[#FFD200] underline underline-offset-2 hover:text-[#CCB000] transition-colors"
+                      onClick={(e) => e.stopPropagation()}>
+                      Terms and Conditions
+                    </a>
+                  </span>
                   <p className="text-[11px] text-[#3D6080] mt-1 leading-relaxed">{t("submit.terms.text")}</p>
                 </div>
               </label>
@@ -697,27 +762,32 @@ export default function SubmissionForm() {
         <div className="flex items-center justify-between mt-8 pt-6 border-t border-[rgba(0,61,165,0.3)]">
           <button
             onClick={prevStep}
-            className={clsx("btn-secondary", step === 0 && "opacity-0 pointer-events-none")}
+            className={clsx("btn-secondary !px-4 sm:!px-5", step === 0 && "opacity-0 pointer-events-none")}
           >
             {t("submit.nav.back")}
           </button>
           {step < steps.length - 1 ? (
-            <button onClick={nextStep} className="btn-primary">
+            <button onClick={nextStep} className="btn-primary !px-4 sm:!px-7">
               {t("submit.nav.next")} <ChevronRight size={16} />
             </button>
           ) : (
             <button
               onClick={handleSubmit}
               disabled={submitting}
-              className={clsx("btn-primary", submitting && "opacity-60 cursor-not-allowed")}
+              className={clsx("btn-primary !px-4 sm:!px-7", submitting && "opacity-60 cursor-not-allowed")}
             >
               {submitting ? (
                 <span className="flex items-center gap-2">
                   <span className="w-4 h-4 border-2 border-[#000918] border-t-transparent rounded-full animate-spin" />
-                  {t("submit.submitting")}
+                  <span className="hidden sm:inline">{t("submit.submitting")}</span>
+                  <span className="sm:hidden">Submitting…</span>
                 </span>
               ) : (
-                <><Shield size={15} />{t("submit.submit")}</>
+                <>
+                  <Shield size={15} />
+                  <span className="hidden sm:inline">{t("submit.submit")}</span>
+                  <span className="sm:hidden">Submit</span>
+                </>
               )}
             </button>
           )}

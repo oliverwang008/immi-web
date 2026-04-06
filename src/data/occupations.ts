@@ -162,8 +162,11 @@ export const OCCUPATIONS: Occupation[] = [
   { code: "132211", title: "Finance Director", category: "Accounting & Finance", list: ["CSOL"] },
   { code: "222112", title: "Financial Investment Manager", category: "Accounting & Finance", list: ["CSOL"] },
   { code: "224111", title: "Actuary", category: "Accounting & Finance", list: ["CSOL", "TSS"] },
+  { code: "224113", title: "Statistician", category: "Accounting & Finance", list: ["CSOL", "TSS"] },
   { code: "224211", title: "Economist", category: "Accounting & Finance", list: ["CSOL"] },
   { code: "224311", title: "Intelligence Officer", category: "Accounting & Finance", list: ["CSOL"] },
+  { code: "224411", title: "Land Economist", category: "Accounting & Finance", list: ["CSOL"] },
+  { code: "224511", title: "Logistics and Supply Chain Manager", category: "Accounting & Finance", list: ["CSOL"] },
   { code: "224712", title: "Valuer", category: "Accounting & Finance", list: ["CSOL"] },
 
   // Architecture & Construction
@@ -212,6 +215,17 @@ export const OCCUPATIONS: Occupation[] = [
   { code: "351311", title: "Pastrycook", category: "Trades & Technical", list: ["CSOL"] },
   { code: "313212", title: "ICT Support Technician", category: "Trades & Technical", list: ["CSOL"] },
 
+  // Trades & Technical (additional)
+  { code: "351411", title: "Chef", category: "Trades & Technical", list: ["CSOL", "TSS"] },
+  { code: "312212", title: "Civil Engineering Technician", category: "Trades & Technical", list: ["CSOL"] },
+  { code: "312411", title: "Drafter (General)", category: "Trades & Technical", list: ["CSOL"] },
+  { code: "313111", title: "ICT Customer Support Officer", category: "Trades & Technical", list: ["CSOL"] },
+  { code: "322111", title: "Metal Fabricator", category: "Trades & Technical", list: ["CSOL", "TSS"] },
+  { code: "323111", title: "Gas or Petroleum Operator", category: "Trades & Technical", list: ["CSOL"] },
+  { code: "324111", title: "Panel Beater", category: "Trades & Technical", list: ["CSOL"] },
+  { code: "342211", title: "Lift Mechanic", category: "Trades & Technical", list: ["CSOL"] },
+  { code: "399111", title: "Boat Builder and Repairer", category: "Trades & Technical", list: ["CSOL"] },
+
   // Management & Business
   { code: "111211", title: "Corporate General Manager", category: "Management & Business", list: ["CSOL", "TSS"] },
   { code: "111311", title: "Defence Force Senior Officer", category: "Management & Business", list: ["CSOL"] },
@@ -223,7 +237,12 @@ export const OCCUPATIONS: Occupation[] = [
   { code: "132311", title: "Human Resource Manager", category: "Management & Business", list: ["CSOL", "TSS"] },
   { code: "132411", title: "Policy and Planning Manager", category: "Management & Business", list: ["CSOL"] },
   { code: "132511", title: "Research and Development Manager", category: "Management & Business", list: ["CSOL"] },
+  { code: "141111", title: "Café or Restaurant Manager", category: "Management & Business", list: ["CSOL", "TSS"] },
+  { code: "141311", title: "Hotel or Motel Manager", category: "Management & Business", list: ["CSOL"] },
+  { code: "141411", title: "Licensed Club Manager", category: "Management & Business", list: ["CSOL"] },
   { code: "223111", title: "Human Resource Adviser", category: "Management & Business", list: ["CSOL", "TSS"] },
+  { code: "223112", title: "Recruitment Consultant", category: "Management & Business", list: ["CSOL", "TSS"] },
+  { code: "223113", title: "Workplace Relations Adviser", category: "Management & Business", list: ["CSOL"] },
   { code: "223211", title: "ICT Trainer", category: "Management & Business", list: ["CSOL"] },
   { code: "224712", title: "Valuer", category: "Management & Business", list: ["CSOL"] },
   { code: "225111", title: "Advertising Specialist", category: "Management & Business", list: ["CSOL"] },

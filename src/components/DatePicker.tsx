@@ -20,26 +20,45 @@ const CAL_MONTHS = [
 ];
 const CAL_DAYS = ["Mo","Tu","We","Th","Fr","Sa","Su"];
 
+/** Choose a sensible initial month: value → max → today */
+function initialViewing(value: string, max?: string): Date {
+  if (value) return new Date(value + "T12:00:00");
+  if (max) {
+    const m = new Date(max + "T12:00:00");
+    if (m < new Date()) return m;
+  }
+  return new Date();
+}
+
 export default function DatePicker({ value, onChange, max, min, hasError, placeholder }: DatePickerProps) {
   const [open, setOpen] = useState(false);
-  const [viewing, setViewing] = useState<Date>(() =>
-    value ? new Date(value + "T12:00:00") : new Date()
-  );
-  // Position of the dropdown in viewport coords
-  const [dropPos, setDropPos] = useState({ top: 0, left: 0, width: 0 });
+  const [viewing, setViewing] = useState<Date>(() => initialViewing(value, max));
+  const [dropStyle, setDropStyle] = useState<React.CSSProperties>({});
   const triggerRef = useRef<HTMLDivElement>(null);
   const dropRef = useRef<HTMLDivElement>(null);
 
-  // Recalculate position when opening
+  const computePosition = () => {
+    if (!triggerRef.current) return;
+    const r = triggerRef.current.getBoundingClientRect();
+    const dropH = 310; // approximate calendar height
+    const spaceBelow = window.innerHeight - r.bottom;
+    const flipUp = spaceBelow < dropH + 16;
+    setDropStyle({
+      position: "absolute",
+      left: r.left + window.scrollX,
+      top: flipUp
+        ? r.top + window.scrollY - dropH - 6
+        : r.bottom + window.scrollY + 6,
+      minWidth: Math.max(r.width, 272),
+      zIndex: 9999,
+    });
+  };
+
   const openPicker = () => {
-    if (triggerRef.current) {
-      const r = triggerRef.current.getBoundingClientRect();
-      setDropPos({ top: r.bottom + window.scrollY + 6, left: r.left + window.scrollX, width: r.width });
-    }
+    computePosition();
     setOpen(v => !v);
   };
 
-  // Close on outside click
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
@@ -52,7 +71,6 @@ export default function DatePicker({ value, onChange, max, min, hasError, placeh
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
-  // Close on scroll/resize
   useEffect(() => {
     if (!open) return;
     const close = () => setOpen(false);
@@ -61,9 +79,11 @@ export default function DatePicker({ value, onChange, max, min, hasError, placeh
     return () => { window.removeEventListener("scroll", close, true); window.removeEventListener("resize", close); };
   }, [open]);
 
+  // Sync viewing when value or max changes externally
   useEffect(() => {
-    if (value) setViewing(new Date(value + "T12:00:00"));
-  }, [value]);
+    setViewing(initialViewing(value, max));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value, max]);
 
   const todayStr = new Date().toISOString().split("T")[0];
   const maxDate = max ? new Date(max + "T12:00:00") : new Date();
@@ -86,8 +106,10 @@ export default function DatePicker({ value, onChange, max, min, hasError, placeh
     return false;
   };
 
-  const canGoPrev = !minDate || new Date(year, month, 0) >= minDate;
-  const canGoNext = new Date(year, month + 1, 1) <= maxDate;
+  const canGoPrevMonth = !minDate || new Date(year, month, 0) >= minDate;
+  const canGoNextMonth = new Date(year, month + 1, 1) <= maxDate;
+  const canGoPrevYear = !minDate || new Date(year - 1, month + 1, 0) >= minDate;
+  const canGoNextYear = new Date(year + 1, month, 1) <= maxDate;
 
   const displayValue = value
     ? new Date(value + "T12:00:00").toLocaleDateString("en-AU", {
@@ -99,11 +121,7 @@ export default function DatePicker({ value, onChange, max, min, hasError, placeh
     <div
       ref={dropRef}
       style={{
-        position: "absolute",
-        top: dropPos.top,
-        left: dropPos.left,
-        minWidth: Math.max(dropPos.width, 272),
-        zIndex: 9999,
+        ...dropStyle,
         background: "linear-gradient(160deg, #001428 0%, #000E24 100%)",
         border: "1px solid rgba(0,61,165,0.45)",
         borderRadius: "16px",
@@ -112,23 +130,31 @@ export default function DatePicker({ value, onChange, max, min, hasError, placeh
       }}
       onMouseDown={(e) => e.preventDefault()}
     >
-      {/* Month/year header */}
-      <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "1px solid rgba(0,61,165,0.3)" }}>
-        <button
-          type="button"
-          onClick={() => setViewing(new Date(year, month - 1, 1))}
-          disabled={!canGoPrev}
-          className="w-8 h-8 flex items-center justify-center rounded-lg text-[#FFD200] text-lg font-bold hover:bg-[rgba(255,210,0,0.1)] disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
-        >‹</button>
-        <span className="text-[#F0F4FF] text-sm font-semibold tracking-wide">
+      {/* Header: year ‹‹ | month ‹  Month YYYY  month › | year ›› */}
+      <div className="flex items-center justify-between px-3 py-3" style={{ borderBottom: "1px solid rgba(0,61,165,0.3)" }}>
+        {/* Prev year */}
+        <button type="button" onClick={() => setViewing(new Date(year - 1, month, 1))} disabled={!canGoPrevYear}
+          className="w-7 h-7 flex items-center justify-center rounded-lg text-[#3D6080] text-xs font-bold hover:bg-[rgba(255,210,0,0.08)] hover:text-[#FFD200] disabled:opacity-20 disabled:cursor-not-allowed transition-colors" title="Previous year">
+          «
+        </button>
+        {/* Prev month */}
+        <button type="button" onClick={() => setViewing(new Date(year, month - 1, 1))} disabled={!canGoPrevMonth}
+          className="w-7 h-7 flex items-center justify-center rounded-lg text-[#FFD200] text-lg font-bold hover:bg-[rgba(255,210,0,0.1)] disabled:opacity-25 disabled:cursor-not-allowed transition-colors">
+          ‹
+        </button>
+        <span className="text-[#F0F4FF] text-sm font-semibold tracking-wide flex-1 text-center">
           {CAL_MONTHS[month]} {year}
         </span>
-        <button
-          type="button"
-          onClick={() => setViewing(new Date(year, month + 1, 1))}
-          disabled={!canGoNext}
-          className="w-8 h-8 flex items-center justify-center rounded-lg text-[#FFD200] text-lg font-bold hover:bg-[rgba(255,210,0,0.1)] disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
-        >›</button>
+        {/* Next month */}
+        <button type="button" onClick={() => setViewing(new Date(year, month + 1, 1))} disabled={!canGoNextMonth}
+          className="w-7 h-7 flex items-center justify-center rounded-lg text-[#FFD200] text-lg font-bold hover:bg-[rgba(255,210,0,0.1)] disabled:opacity-25 disabled:cursor-not-allowed transition-colors">
+          ›
+        </button>
+        {/* Next year */}
+        <button type="button" onClick={() => setViewing(new Date(year + 1, month, 1))} disabled={!canGoNextYear}
+          className="w-7 h-7 flex items-center justify-center rounded-lg text-[#3D6080] text-xs font-bold hover:bg-[rgba(255,210,0,0.08)] hover:text-[#FFD200] disabled:opacity-20 disabled:cursor-not-allowed transition-colors" title="Next year">
+          »
+        </button>
       </div>
 
       {/* Day-of-week headers */}
@@ -172,7 +198,6 @@ export default function DatePicker({ value, onChange, max, min, hasError, placeh
 
   return (
     <div ref={triggerRef} className="relative">
-      {/* Trigger */}
       <div
         className={clsx(
           "input-icon-wrap cursor-pointer rounded-[10px] transition-all select-none",
@@ -192,7 +217,6 @@ export default function DatePicker({ value, onChange, max, min, hasError, placeh
         </div>
       </div>
 
-      {/* Portal: renders at body level to escape stacking contexts */}
       {typeof document !== "undefined" && dropdown && createPortal(dropdown, document.body)}
     </div>
   );

@@ -4,10 +4,9 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import Header from "@/components/Header";
 import StatsCards from "@/components/StatsCards";
+import VisaDonutChart from "@/components/VisaDonutChart";
 import StatusBarChart from "@/components/StatusBarChart";
 import OccupationChart from "@/components/OccupationChart";
-import ProcessingTimeChart from "@/components/ProcessingTimeChart";
-import TrendChart from "@/components/TrendChart";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { fetchSubmissions, aggregateStats, AggregatedStats, VisaSubmission } from "@/lib/firestore";
 import { VISA_TYPES } from "@/data/visas";
@@ -250,17 +249,13 @@ export default function HomePage() {
         </section>
 
         {/* Charts */}
-        <section className="mb-6">
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <VisaDonutChart data={stats?.byVisa ?? {}} loading={loading} />
           <StatusBarChart data={stats?.byStatus ?? {}} loading={loading} />
         </section>
 
-        <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          <OccupationChart data={stats?.byOccupationCategory ?? {}} loading={loading} />
-          <ProcessingTimeChart processingTimes={stats?.processingTimes ?? {}} loading={loading} />
-        </section>
-
         <section className="mb-6">
-          <TrendChart data={stats?.submissionsByMonth ?? {}} loading={loading} />
+          <OccupationChart data={stats?.byOccupationCategory ?? {}} loading={loading} />
         </section>
 
         {/* CTA */}
