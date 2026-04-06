@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { Calendar } from "lucide-react";
 import clsx from "clsx";
 
@@ -24,15 +25,40 @@ export default function DatePicker({ value, onChange, max, min, hasError, placeh
   const [viewing, setViewing] = useState<Date>(() =>
     value ? new Date(value + "T12:00:00") : new Date()
   );
-  const containerRef = useRef<HTMLDivElement>(null);
+  // Position of the dropdown in viewport coords
+  const [dropPos, setDropPos] = useState({ top: 0, left: 0, width: 0 });
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const dropRef = useRef<HTMLDivElement>(null);
 
+  // Recalculate position when opening
+  const openPicker = () => {
+    if (triggerRef.current) {
+      const r = triggerRef.current.getBoundingClientRect();
+      setDropPos({ top: r.bottom + window.scrollY + 6, left: r.left + window.scrollX, width: r.width });
+    }
+    setOpen(v => !v);
+  };
+
+  // Close on outside click
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
+      if (
+        triggerRef.current && !triggerRef.current.contains(e.target as Node) &&
+        dropRef.current && !dropRef.current.contains(e.target as Node)
+      ) setOpen(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  // Close on scroll/resize
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => { window.removeEventListener("scroll", close, true); window.removeEventListener("resize", close); };
   }, [open]);
 
   useEffect(() => {
@@ -47,7 +73,7 @@ export default function DatePicker({ value, onChange, max, min, hasError, placeh
   const month = viewing.getMonth();
 
   const firstDayOfWeek = new Date(year, month, 1).getDay();
-  const startOffset = (firstDayOfWeek + 6) % 7; // Mon=0
+  const startOffset = (firstDayOfWeek + 6) % 7;
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
   const toDateStr = (day: number) =>
@@ -69,8 +95,83 @@ export default function DatePicker({ value, onChange, max, min, hasError, placeh
       })
     : "";
 
+  const dropdown = open ? (
+    <div
+      ref={dropRef}
+      style={{
+        position: "absolute",
+        top: dropPos.top,
+        left: dropPos.left,
+        minWidth: Math.max(dropPos.width, 272),
+        zIndex: 9999,
+        background: "linear-gradient(160deg, #001428 0%, #000E24 100%)",
+        border: "1px solid rgba(0,61,165,0.45)",
+        borderRadius: "16px",
+        overflow: "hidden",
+        boxShadow: "0 20px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,210,0,0.06)",
+      }}
+      onMouseDown={(e) => e.preventDefault()}
+    >
+      {/* Month/year header */}
+      <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "1px solid rgba(0,61,165,0.3)" }}>
+        <button
+          type="button"
+          onClick={() => setViewing(new Date(year, month - 1, 1))}
+          disabled={!canGoPrev}
+          className="w-8 h-8 flex items-center justify-center rounded-lg text-[#FFD200] text-lg font-bold hover:bg-[rgba(255,210,0,0.1)] disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
+        >‹</button>
+        <span className="text-[#F0F4FF] text-sm font-semibold tracking-wide">
+          {CAL_MONTHS[month]} {year}
+        </span>
+        <button
+          type="button"
+          onClick={() => setViewing(new Date(year, month + 1, 1))}
+          disabled={!canGoNext}
+          className="w-8 h-8 flex items-center justify-center rounded-lg text-[#FFD200] text-lg font-bold hover:bg-[rgba(255,210,0,0.1)] disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
+        >›</button>
+      </div>
+
+      {/* Day-of-week headers */}
+      <div className="grid grid-cols-7 px-3 pt-3 pb-1">
+        {CAL_DAYS.map(d => (
+          <div key={d} className="text-center text-[10px] font-semibold text-[#2A4A6A] py-1 tracking-wider">{d}</div>
+        ))}
+      </div>
+
+      {/* Day grid */}
+      <div className="grid grid-cols-7 px-3 pb-4 gap-y-0.5">
+        {Array.from({ length: startOffset }).map((_, i) => <div key={`e${i}`} />)}
+        {Array.from({ length: daysInMonth }).map((_, i) => {
+          const day = i + 1;
+          const ds = toDateStr(day);
+          const disabled = isDisabled(day);
+          const selected = ds === value;
+          const isToday = ds === todayStr;
+          return (
+            <button
+              key={day}
+              type="button"
+              disabled={disabled}
+              onClick={() => { onChange(ds); setOpen(false); }}
+              className={clsx(
+                "h-8 w-full rounded-lg text-sm font-medium transition-all",
+                selected
+                  ? "bg-[#FFD200] text-[#000918] font-bold shadow-[0_2px_8px_rgba(255,210,0,0.35)]"
+                  : disabled
+                  ? "text-[#1A3050] cursor-not-allowed"
+                  : isToday
+                  ? "text-[#FFD200] ring-1 ring-[rgba(255,210,0,0.4)] hover:bg-[rgba(255,210,0,0.1)]"
+                  : "text-[#8BB8DC] hover:bg-[rgba(139,184,220,0.08)] hover:text-[#F0F4FF]"
+              )}
+            >{day}</button>
+          );
+        })}
+      </div>
+    </div>
+  ) : null;
+
   return (
-    <div ref={containerRef} className="relative">
+    <div ref={triggerRef} className="relative">
       {/* Trigger */}
       <div
         className={clsx(
@@ -78,7 +179,7 @@ export default function DatePicker({ value, onChange, max, min, hasError, placeh
           hasError ? "ring-1 ring-[#C8102E]" : "",
           open && "ring-1 ring-[rgba(255,210,0,0.4)]"
         )}
-        onClick={() => setOpen(v => !v)}
+        onClick={openPicker}
       >
         <Calendar size={15} className="input-icon pointer-events-none" />
         <div
@@ -91,78 +192,8 @@ export default function DatePicker({ value, onChange, max, min, hasError, placeh
         </div>
       </div>
 
-      {/* Dropdown */}
-      {open && (
-        <div
-          className="absolute z-50 mt-1.5 rounded-2xl shadow-2xl overflow-hidden"
-          style={{
-            background: "linear-gradient(160deg, #001428 0%, #000E24 100%)",
-            border: "1px solid rgba(0,61,165,0.45)",
-            minWidth: "272px",
-            boxShadow: "0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,210,0,0.06)",
-          }}
-          onMouseDown={(e) => e.preventDefault()}
-        >
-          {/* Month/year header */}
-          <div
-            className="flex items-center justify-between px-4 py-3"
-            style={{ borderBottom: "1px solid rgba(0,61,165,0.3)" }}
-          >
-            <button
-              type="button"
-              onClick={() => setViewing(new Date(year, month - 1, 1))}
-              disabled={!canGoPrev}
-              className="w-8 h-8 flex items-center justify-center rounded-lg text-[#FFD200] text-lg font-bold hover:bg-[rgba(255,210,0,0.1)] disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
-            >‹</button>
-            <span className="text-[#F0F4FF] text-sm font-semibold tracking-wide">
-              {CAL_MONTHS[month]} {year}
-            </span>
-            <button
-              type="button"
-              onClick={() => setViewing(new Date(year, month + 1, 1))}
-              disabled={!canGoNext}
-              className="w-8 h-8 flex items-center justify-center rounded-lg text-[#FFD200] text-lg font-bold hover:bg-[rgba(255,210,0,0.1)] disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
-            >›</button>
-          </div>
-
-          {/* Day-of-week headers */}
-          <div className="grid grid-cols-7 px-3 pt-3 pb-1">
-            {CAL_DAYS.map(d => (
-              <div key={d} className="text-center text-[10px] font-semibold text-[#2A4A6A] py-1 tracking-wider">{d}</div>
-            ))}
-          </div>
-
-          {/* Day grid */}
-          <div className="grid grid-cols-7 px-3 pb-4 gap-y-0.5">
-            {Array.from({ length: startOffset }).map((_, i) => <div key={`e${i}`} />)}
-            {Array.from({ length: daysInMonth }).map((_, i) => {
-              const day = i + 1;
-              const ds = toDateStr(day);
-              const disabled = isDisabled(day);
-              const selected = ds === value;
-              const isToday = ds === todayStr;
-              return (
-                <button
-                  key={day}
-                  type="button"
-                  disabled={disabled}
-                  onClick={() => { onChange(ds); setOpen(false); }}
-                  className={clsx(
-                    "h-8 w-full rounded-lg text-sm font-medium transition-all",
-                    selected
-                      ? "bg-[#FFD200] text-[#000918] font-bold shadow-[0_2px_8px_rgba(255,210,0,0.35)]"
-                      : disabled
-                      ? "text-[#1A3050] cursor-not-allowed"
-                      : isToday
-                      ? "text-[#FFD200] ring-1 ring-[rgba(255,210,0,0.4)] hover:bg-[rgba(255,210,0,0.1)]"
-                      : "text-[#8BB8DC] hover:bg-[rgba(139,184,220,0.08)] hover:text-[#F0F4FF]"
-                  )}
-                >{day}</button>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      {/* Portal: renders at body level to escape stacking contexts */}
+      {typeof document !== "undefined" && dropdown && createPortal(dropdown, document.body)}
     </div>
   );
 }
