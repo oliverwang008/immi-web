@@ -1,9 +1,9 @@
 "use client";
 
 import { useLanguage } from "@/contexts/LanguageContext";
-import { AggregatedStats, getAvgProcessingTime } from "@/lib/firestore";
+import { AggregatedStats } from "@/lib/firestore";
 import AnimatedCounter from "./AnimatedCounter";
-import { MailOpen, CheckCircle, Clock, Layers } from "lucide-react";
+import { MailOpen, CheckCircle, Layers } from "lucide-react";
 
 interface StatsCardsProps {
   stats: AggregatedStats | null;
@@ -12,9 +12,6 @@ interface StatsCardsProps {
 
 export default function StatsCards({ stats, loading }: StatsCardsProps) {
   const { t } = useLanguage();
-
-  const allTimes = Object.values(stats?.processingTimes ?? {}).flat();
-  const avgDays = getAvgProcessingTime(allTimes);
 
   const grantRate =
     stats && stats.total > 0
@@ -52,24 +49,14 @@ export default function StatsCards({ stats, loading }: StatsCardsProps) {
       color: "#FFD200",
       bg: "rgba(255,210,0,0.08)",
       border: "rgba(255,210,0,0.2)",
-      detail: `${stats?.inProgress ?? 0} ${t("home.stats.inProgress").toLowerCase()}`,
-    },
-    {
-      label: t("home.stats.avgProcessing"),
-      value: avgDays,
-      icon: <Clock size={20} />,
-      suffix: ` ${t("home.stats.days")}`,
-      color: "#c47ac7",
-      bg: "rgba(196,122,199,0.08)",
-      border: "rgba(196,122,199,0.2)",
-      detail: avgDays ? `${Math.round(avgDays / 30)} ${t("home.stats.months")}` : "—",
+      detail: `${Object.keys(stats?.byVisa ?? {}).length} visa types`,
     },
   ];
 
   if (loading) {
     return (
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[...Array(4)].map((_, i) => (
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {[...Array(3)].map((_, i) => (
           <div
             key={i}
             className="glass-card p-5 h-28 shimmer"
@@ -81,7 +68,7 @@ export default function StatsCards({ stats, loading }: StatsCardsProps) {
   }
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
       {cards.map((card, i) => (
         <div
           key={card.label}
