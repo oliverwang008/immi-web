@@ -126,31 +126,37 @@ export default function SubmissionForm() {
         if (!form.statusDate) {
           newErrors.statusDate = t("submit.required");
         } else if (!isValidDate(form.statusDate)) {
-          newErrors.statusDate = "Invalid date";
+          newErrors.statusDate = t("submit.error.invalidDate");
+        } else if (form.statusDate > DATE_MAX) {
+          newErrors.statusDate = t("submit.error.dateFuture");
         }
 
         // Optional: EOI Invited date (grant_received only)
         if (form.eoiInvitedDate) {
           if (!isValidDate(form.eoiInvitedDate)) {
-            newErrors.eoiInvitedDate = "Invalid date";
+            newErrors.eoiInvitedDate = t("submit.error.invalidDate");
+          } else if (form.eoiInvitedDate > DATE_MAX) {
+            newErrors.eoiInvitedDate = t("submit.error.dateFuture");
           } else if (form.statusDate && form.eoiInvitedDate >= form.statusDate) {
-            newErrors.eoiInvitedDate = "Must be before visa granted date";
+            newErrors.eoiInvitedDate = t("submit.error.eoiInvitedBeforeGrant");
           }
         }
 
         // Optional: EOI Lodge date
         if (form.eoiLodgeDate) {
           if (!isValidDate(form.eoiLodgeDate)) {
-            newErrors.eoiLodgeDate = "Invalid date";
+            newErrors.eoiLodgeDate = t("submit.error.invalidDate");
+          } else if (form.eoiLodgeDate > DATE_MAX) {
+            newErrors.eoiLodgeDate = t("submit.error.dateFuture");
           } else if (form.currentStatus === "eoi_invited") {
             if (form.statusDate && form.eoiLodgeDate >= form.statusDate) {
-              newErrors.eoiLodgeDate = "Must be before EOI invited date";
+              newErrors.eoiLodgeDate = t("submit.error.eoiLodgeBeforeInvited");
             }
           } else if (form.currentStatus === "grant_received") {
             if (form.eoiInvitedDate && form.eoiLodgeDate >= form.eoiInvitedDate) {
-              newErrors.eoiLodgeDate = "Must be before EOI invited date";
+              newErrors.eoiLodgeDate = t("submit.error.eoiLodgeBeforeInvited");
             } else if (!form.eoiInvitedDate && form.statusDate && form.eoiLodgeDate >= form.statusDate) {
-              newErrors.eoiLodgeDate = "Must be before visa granted date";
+              newErrors.eoiLodgeDate = t("submit.error.eoiLodgeBeforeGrant");
             }
           }
         }
@@ -504,13 +510,17 @@ export default function SubmissionForm() {
                       : t("submit.status.visaGranted")}
                     {" "}<span className="text-[#C8102E]">*</span>
                   </label>
-                  <input
-                    type="date"
-                    className={clsx("input-field", errors.statusDate && "!border-[#C8102E]")}
-                    value={form.statusDate}
-                    max={DATE_MAX}
-                    onChange={(e) => { setForm((f) => ({ ...f, statusDate: e.target.value })); clearErr("statusDate"); }}
-                  />
+                  <label className="input-icon-wrap cursor-pointer">
+                    <Calendar size={15} className="input-icon" />
+                    <input
+                      type="date"
+                      className={clsx("input-field", errors.statusDate && "!border-[#C8102E]")}
+                      style={{ paddingLeft: "2.5rem" }}
+                      value={form.statusDate}
+                      max={DATE_MAX}
+                      onChange={(e) => { setForm((f) => ({ ...f, statusDate: e.target.value })); clearErr("statusDate"); }}
+                    />
+                  </label>
                   {errors.statusDate && <p className="text-[#C8102E] text-[10px] mt-1">{errors.statusDate}</p>}
                 </div>
 
@@ -521,13 +531,17 @@ export default function SubmissionForm() {
                       {t("submit.status.eoiInvitedDate")}
                     </label>
                     <p className="text-[10px] text-[#3D6080] mb-2">{t("submit.status.eoiInvitedDateHint")}</p>
-                    <input
-                      type="date"
-                      className={clsx("input-field", errors.eoiInvitedDate && "!border-[#C8102E]")}
-                      value={form.eoiInvitedDate}
-                      max={form.statusDate || DATE_MAX}
-                      onChange={(e) => { setForm((f) => ({ ...f, eoiInvitedDate: e.target.value })); clearErr("eoiInvitedDate"); }}
-                    />
+                    <label className="input-icon-wrap cursor-pointer">
+                      <Calendar size={15} className="input-icon" />
+                      <input
+                        type="date"
+                        className={clsx("input-field", errors.eoiInvitedDate && "!border-[#C8102E]")}
+                        style={{ paddingLeft: "2.5rem" }}
+                        value={form.eoiInvitedDate}
+                        max={form.statusDate || DATE_MAX}
+                        onChange={(e) => { setForm((f) => ({ ...f, eoiInvitedDate: e.target.value })); clearErr("eoiInvitedDate"); }}
+                      />
+                    </label>
                     {errors.eoiInvitedDate && <p className="text-[#C8102E] text-[10px] mt-1">{errors.eoiInvitedDate}</p>}
                   </div>
                 )}
@@ -538,17 +552,21 @@ export default function SubmissionForm() {
                     {t("submit.status.eoiLodgeDate")}
                   </label>
                   <p className="text-[10px] text-[#3D6080] mb-2">{t("submit.status.eoiLodgeDateHint")}</p>
-                  <input
-                    type="date"
-                    className={clsx("input-field", errors.eoiLodgeDate && "!border-[#C8102E]")}
-                    value={form.eoiLodgeDate}
-                    max={
-                      form.currentStatus === "eoi_invited"
-                        ? (form.statusDate || DATE_MAX)
-                        : (form.eoiInvitedDate || form.statusDate || DATE_MAX)
-                    }
-                    onChange={(e) => { setForm((f) => ({ ...f, eoiLodgeDate: e.target.value })); clearErr("eoiLodgeDate"); }}
-                  />
+                  <label className="input-icon-wrap cursor-pointer">
+                    <Calendar size={15} className="input-icon" />
+                    <input
+                      type="date"
+                      className={clsx("input-field", errors.eoiLodgeDate && "!border-[#C8102E]")}
+                      style={{ paddingLeft: "2.5rem" }}
+                      value={form.eoiLodgeDate}
+                      max={
+                        form.currentStatus === "eoi_invited"
+                          ? (form.statusDate || DATE_MAX)
+                          : (form.eoiInvitedDate || form.statusDate || DATE_MAX)
+                      }
+                      onChange={(e) => { setForm((f) => ({ ...f, eoiLodgeDate: e.target.value })); clearErr("eoiLodgeDate"); }}
+                    />
+                  </label>
                   {errors.eoiLodgeDate && <p className="text-[#C8102E] text-[10px] mt-1">{errors.eoiLodgeDate}</p>}
                 </div>
 

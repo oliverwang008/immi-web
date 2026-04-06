@@ -155,7 +155,12 @@ export type TranslationKey =
   | "home.filter.industry"
   | "home.filter.occupation"
   | "home.filter.allIndustries"
-  | "home.filter.clear";
+  | "home.filter.clear"
+  | "submit.error.invalidDate"
+  | "submit.error.dateFuture"
+  | "submit.error.eoiInvitedBeforeGrant"
+  | "submit.error.eoiLodgeBeforeInvited"
+  | "submit.error.eoiLodgeBeforeGrant";
 
 type Translations = Record<TranslationKey, string>;
 type AllTranslations = Record<Language, Translations>;
@@ -296,6 +301,11 @@ export const translations: AllTranslations = {
     "home.filter.occupation": "Occupation",
     "home.filter.allIndustries": "All Industries",
     "home.filter.clear": "Clear",
+    "submit.error.invalidDate": "Invalid date",
+    "submit.error.dateFuture": "Date cannot be in the future",
+    "submit.error.eoiInvitedBeforeGrant": "Must be before visa granted date",
+    "submit.error.eoiLodgeBeforeInvited": "Must be before EOI invited date",
+    "submit.error.eoiLodgeBeforeGrant": "Must be before visa granted date",
   },
   zh: {
     "nav.home": "数据看板",
@@ -432,6 +442,11 @@ export const translations: AllTranslations = {
     "home.filter.occupation": "职业",
     "home.filter.allIndustries": "所有行业",
     "home.filter.clear": "清除",
+    "submit.error.invalidDate": "日期无效",
+    "submit.error.dateFuture": "日期不能晚于今天",
+    "submit.error.eoiInvitedBeforeGrant": "必须早于签证批准日期",
+    "submit.error.eoiLodgeBeforeInvited": "必须早于EOI受邀日期",
+    "submit.error.eoiLodgeBeforeGrant": "必须早于签证批准日期",
   },
   hi: {
     "nav.home": "डैशबोर्ड",
@@ -568,6 +583,11 @@ export const translations: AllTranslations = {
     "home.filter.occupation": "व्यवसाय",
     "home.filter.allIndustries": "सभी उद्योग",
     "home.filter.clear": "साफ़ करें",
+    "submit.error.invalidDate": "अमान्य तारीख",
+    "submit.error.dateFuture": "तारीख भविष्य में नहीं हो सकती",
+    "submit.error.eoiInvitedBeforeGrant": "वीज़ा प्रदान तारीख से पहले होनी चाहिए",
+    "submit.error.eoiLodgeBeforeInvited": "EOI आमंत्रण तारीख से पहले होनी चाहिए",
+    "submit.error.eoiLodgeBeforeGrant": "वीज़ा प्रदान तारीख से पहले होनी चाहिए",
   },
   tl: {
     "nav.home": "Dashboard",
@@ -704,6 +724,11 @@ export const translations: AllTranslations = {
     "home.filter.occupation": "Trabaho",
     "home.filter.allIndustries": "Lahat ng Industriya",
     "home.filter.clear": "I-clear",
+    "submit.error.invalidDate": "Di-wastong petsa",
+    "submit.error.dateFuture": "Ang petsa ay hindi maaaring nasa hinaharap",
+    "submit.error.eoiInvitedBeforeGrant": "Dapat bago ang petsa ng visa granted",
+    "submit.error.eoiLodgeBeforeInvited": "Dapat bago ang petsa ng EOI invited",
+    "submit.error.eoiLodgeBeforeGrant": "Dapat bago ang petsa ng visa granted",
   },
   vi: {
     "nav.home": "Bảng điều khiển",
@@ -840,6 +865,11 @@ export const translations: AllTranslations = {
     "home.filter.occupation": "Nghề nghiệp",
     "home.filter.allIndustries": "Tất cả ngành",
     "home.filter.clear": "Xóa",
+    "submit.error.invalidDate": "Ngày không hợp lệ",
+    "submit.error.dateFuture": "Ngày không thể là ngày trong tương lai",
+    "submit.error.eoiInvitedBeforeGrant": "Phải trước ngày cấp visa",
+    "submit.error.eoiLodgeBeforeInvited": "Phải trước ngày EOI được mời",
+    "submit.error.eoiLodgeBeforeGrant": "Phải trước ngày cấp visa",
   },
   ne: {
     "nav.home": "ड्यासबोर्ड",
@@ -976,6 +1006,11 @@ export const translations: AllTranslations = {
     "home.filter.occupation": "पेशा",
     "home.filter.allIndustries": "सबै उद्योग",
     "home.filter.clear": "हटाउनुहोस्",
+    "submit.error.invalidDate": "अमान्य मिति",
+    "submit.error.dateFuture": "मिति भविष्यमा हुन सक्दैन",
+    "submit.error.eoiInvitedBeforeGrant": "भिसा प्रदान मितिभन्दा पहिले हुनु पर्छ",
+    "submit.error.eoiLodgeBeforeInvited": "EOI आमन्त्रण मितिभन्दा पहिले हुनु पर्छ",
+    "submit.error.eoiLodgeBeforeGrant": "भिसा प्रदान मितिभन्दा पहिले हुनु पर्छ",
   },
   ur: {
     "nav.home": "ڈیش بورڈ",
@@ -1112,6 +1147,11 @@ export const translations: AllTranslations = {
     "home.filter.occupation": "پیشہ",
     "home.filter.allIndustries": "تمام صنعتیں",
     "home.filter.clear": "صاف کریں",
+    "submit.error.invalidDate": "غلط تاریخ",
+    "submit.error.dateFuture": "تاریخ مستقبل میں نہیں ہو سکتی",
+    "submit.error.eoiInvitedBeforeGrant": "ویزہ منظوری کی تاریخ سے پہلے ہونی چاہیے",
+    "submit.error.eoiLodgeBeforeInvited": "EOI دعوت کی تاریخ سے پہلے ہونی چاہیے",
+    "submit.error.eoiLodgeBeforeGrant": "ویزہ منظوری کی تاریخ سے پہلے ہونی چاہیے",
   },
 };
 

@@ -13,7 +13,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { fetchSubmissions, aggregateStats, AggregatedStats, VisaSubmission } from "@/lib/firestore";
 import { VISA_TYPES } from "@/data/visas";
 import { OCCUPATION_CATEGORIES } from "@/data/occupations";
-import { PlusCircle, RefreshCw, Filter, Users, X } from "lucide-react";
+import { PlusCircle, RefreshCw, Filter, Users, X, Calendar } from "lucide-react";
 import clsx from "clsx";
 
 const DATE_MAX = new Date().toISOString().split("T")[0];
@@ -201,26 +201,34 @@ export default function HomePage() {
             {/* Date from */}
             <div className="flex flex-col gap-0.5 col-span-1">
               <label className="text-[10px] text-[#3D6080] px-0.5">{t("home.filter.dateFrom")}</label>
-              <input
-                type="date"
-                className="input-field !py-2 text-sm"
-                value={filterDateFrom}
-                max={filterDateTo || DATE_MAX}
-                onChange={(e) => setFilterDateFrom(e.target.value)}
-              />
+              <label className="input-icon-wrap cursor-pointer">
+                <Calendar size={13} className="input-icon" />
+                <input
+                  type="date"
+                  className="input-field !py-2 text-sm"
+                  style={{ paddingLeft: "2.5rem" }}
+                  value={filterDateFrom}
+                  max={filterDateTo || DATE_MAX}
+                  onChange={(e) => setFilterDateFrom(e.target.value)}
+                />
+              </label>
             </div>
 
             {/* Date to */}
             <div className="flex flex-col gap-0.5 col-span-1">
               <label className="text-[10px] text-[#3D6080] px-0.5">{t("home.filter.dateTo")}</label>
-              <input
-                type="date"
-                className="input-field !py-2 text-sm"
-                value={filterDateTo}
-                min={filterDateFrom}
-                max={DATE_MAX}
-                onChange={(e) => setFilterDateTo(e.target.value)}
-              />
+              <label className="input-icon-wrap cursor-pointer">
+                <Calendar size={13} className="input-icon" />
+                <input
+                  type="date"
+                  className="input-field !py-2 text-sm"
+                  style={{ paddingLeft: "2.5rem" }}
+                  value={filterDateTo}
+                  min={filterDateFrom}
+                  max={DATE_MAX}
+                  onChange={(e) => setFilterDateTo(e.target.value)}
+                />
+              </label>
             </div>
           </div>
 
