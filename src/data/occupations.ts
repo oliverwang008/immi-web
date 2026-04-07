@@ -88,6 +88,7 @@ export const OCCUPATIONS: Occupation[] = [
 
   // Engineering
   { code: "233111", title: "Chemical Engineer", category: "Engineering", list: ["CSOL", "TSS"] },
+  { code: "233113", title: "Process Engineer", category: "Engineering", list: ["CSOL", "TSS"] },
   { code: "233112", title: "Materials Engineer", category: "Engineering", list: ["CSOL", "TSS"] },
   { code: "233211", title: "Civil Engineer", category: "Engineering", list: ["CSOL", "TSS"] },
   { code: "233212", title: "Geotechnical Engineer", category: "Engineering", list: ["CSOL", "TSS"] },
@@ -103,7 +104,13 @@ export const OCCUPATIONS: Occupation[] = [
   { code: "233612", title: "Petroleum Engineer", category: "Engineering", list: ["CSOL", "TSS"] },
   { code: "233911", title: "Aeronautical Engineer", category: "Engineering", list: ["CSOL", "TSS"] },
   { code: "233912", title: "Agricultural Engineer", category: "Engineering", list: ["CSOL"] },
+  { code: "233913", title: "Biomedical Engineer", category: "Engineering", list: ["CSOL", "TSS"] },
+  { code: "233914", title: "Engineering Technologist", category: "Engineering", list: ["CSOL", "TSS"] },
+  { code: "233915", title: "Environmental Engineer", category: "Engineering", list: ["CSOL", "TSS"] },
+  { code: "233916", title: "Naval Architect", category: "Engineering", list: ["CSOL"] },
   { code: "233999", title: "Engineering Professional (nec)", category: "Engineering", list: ["CSOL"] },
+  { code: "312311", title: "Electrical Engineering Technician", category: "Engineering", list: ["CSOL"] },
+  { code: "312911", title: "Maintenance Planner", category: "Engineering", list: ["CSOL"] },
   { code: "312111", title: "Architectural Drafter", category: "Engineering", list: ["CSOL"] },
   { code: "312211", title: "Civil Engineering Drafter", category: "Engineering", list: ["CSOL"] },
   { code: "312311", title: "Electrical Engineering Draftsperson", category: "Engineering", list: ["CSOL"] },
@@ -137,6 +144,14 @@ export const OCCUPATIONS: Occupation[] = [
   { code: "252711", title: "Ophthalmologist", category: "Healthcare", list: ["CSOL", "TSS"] },
   { code: "252811", title: "Pathologist", category: "Healthcare", list: ["CSOL", "TSS"] },
   { code: "252911", title: "Radiologist", category: "Healthcare", list: ["CSOL", "TSS"] },
+  { code: "252413", title: "Dentist", category: "Healthcare", list: ["CSOL", "TSS"] },
+  { code: "252414", title: "Dental Specialist", category: "Healthcare", list: ["CSOL", "TSS"] },
+  { code: "251611", title: "Optometrist", category: "Healthcare", list: ["CSOL", "TSS"] },
+  { code: "251612", title: "Orthoptist", category: "Healthcare", list: ["CSOL"] },
+  { code: "251911", title: "Health Promotion Officer", category: "Healthcare", list: ["CSOL"] },
+  { code: "254211", title: "Nurse Practitioner", category: "Healthcare", list: ["CSOL", "TSS"] },
+  { code: "254212", title: "Registered Nurse (Paediatrics)", category: "Healthcare", list: ["CSOL", "TSS"] },
+  { code: "254213", title: "Registered Nurse (Aged Care)", category: "Healthcare", list: ["CSOL", "TSS"] },
   { code: "411411", title: "Enrolled Nurse", category: "Healthcare", list: ["CSOL", "TSS"] },
 
   // Education
@@ -193,6 +208,9 @@ export const OCCUPATIONS: Occupation[] = [
   { code: "234611", title: "Medical Laboratory Scientist", category: "Science & Research", list: ["CSOL", "TSS"] },
   { code: "234711", title: "Physicist", category: "Science & Research", list: ["CSOL", "GTI"] },
   { code: "234914", title: "Epidemiologist", category: "Science & Research", list: ["CSOL"] },
+  { code: "234912", title: "Forensic Scientist", category: "Science & Research", list: ["CSOL"] },
+  { code: "234913", title: "Marine Biologist", category: "Science & Research", list: ["CSOL"] },
+  { code: "234999", title: "Natural and Physical Science Professional (nec)", category: "Science & Research", list: ["CSOL"] },
 
   // Trades & Technical
   { code: "321111", title: "Motor Mechanic (General)", category: "Trades & Technical", list: ["CSOL", "TSS"] },
@@ -245,8 +263,19 @@ export const OCCUPATIONS: Occupation[] = [
   { code: "223113", title: "Workplace Relations Adviser", category: "Management & Business", list: ["CSOL"] },
   { code: "223211", title: "ICT Trainer", category: "Management & Business", list: ["CSOL"] },
   { code: "224712", title: "Valuer", category: "Management & Business", list: ["CSOL"] },
+  { code: "139911", title: "Arts Administrator or Manager", category: "Management & Business", list: ["CSOL"] },
+  { code: "139912", title: "Environmental Manager", category: "Management & Business", list: ["CSOL"] },
+  { code: "139913", title: "Laboratory Manager", category: "Management & Business", list: ["CSOL"] },
+  { code: "139914", title: "Quality Assurance Manager", category: "Management & Business", list: ["CSOL", "TSS"] },
+  { code: "139915", title: "Sports Administrator", category: "Management & Business", list: ["CSOL"] },
+  { code: "139999", title: "Specialist Manager (nec)", category: "Management & Business", list: ["CSOL"] },
+  { code: "149211", title: "Facilities Manager", category: "Management & Business", list: ["CSOL"] },
+  { code: "149311", title: "Fleet Manager", category: "Management & Business", list: ["CSOL"] },
+  { code: "511111", title: "Contract Administrator", category: "Management & Business", list: ["CSOL", "TSS"] },
+  { code: "511112", title: "Project or Program Administrator", category: "Management & Business", list: ["CSOL", "TSS"] },
   { code: "225111", title: "Advertising Specialist", category: "Management & Business", list: ["CSOL"] },
   { code: "225311", title: "Marketing Specialist", category: "Management & Business", list: ["CSOL", "TSS"] },
+  { code: "225112", title: "Media Planner", category: "Management & Business", list: ["CSOL"] },
 
   // Legal & Social
   { code: "271111", title: "Barrister", category: "Legal & Social", list: ["CSOL", "TSS"] },
@@ -257,6 +286,10 @@ export const OCCUPATIONS: Occupation[] = [
   { code: "272411", title: "Welfare Centre Manager", category: "Legal & Social", list: ["CSOL"] },
   { code: "272511", title: "Community Development Worker", category: "Legal & Social", list: ["CSOL"] },
   { code: "272612", title: "Migration Agent", category: "Legal & Social", list: ["CSOL"] },
+  { code: "272113", title: "Rehabilitation Counsellor", category: "Legal & Social", list: ["CSOL"] },
+  { code: "272114", title: "Student Counsellor", category: "Legal & Social", list: ["CSOL"] },
+  { code: "272199", title: "Counsellor (nec)", category: "Legal & Social", list: ["CSOL"] },
+  { code: "272999", title: "Social Professionals (nec)", category: "Legal & Social", list: ["CSOL"] },
 
   // Agriculture
   { code: "121211", title: "Aquaculture Farmer", category: "Agriculture", list: ["CSOL", "ROL"] },

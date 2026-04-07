@@ -178,7 +178,7 @@ export const translations: AllTranslations = {
     "nav.subtitle": "Australian Immigration Statistics",
     "home.hero.title": "Australian Skilled Visa Statistics",
     "home.hero.subtitle": "Real-time insights from thousands of applicants tracking their Australian immigration journey.",
-    "home.hero.cta": "Share Your Status",
+    "home.hero.cta": "Share Your Visa Journey",
     "home.stats.total": "Total Submissions",
     "home.stats.granted": "Visas Granted",
     "home.stats.inProgress": "In Progress",

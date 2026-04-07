@@ -3,37 +3,10 @@
 import Header from "@/components/Header";
 import SubmissionForm from "@/components/SubmissionForm";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { Shield, Users, TrendingUp, Clock } from "lucide-react";
+import { Shield } from "lucide-react";
 
 export default function SubmitPage() {
   const { t } = useLanguage();
-
-  const benefits = [
-    {
-      icon: <Users size={18} />,
-      title: t("submit.benefit.helpOthers.title"),
-      desc: t("submit.benefit.helpOthers.desc"),
-      color: "#FFD200",
-    },
-    {
-      icon: <Shield size={18} />,
-      title: t("submit.benefit.anonymous.title"),
-      desc: t("submit.benefit.anonymous.desc"),
-      color: "#00A651",
-    },
-    {
-      icon: <TrendingUp size={18} />,
-      title: t("submit.benefit.insights.title"),
-      desc: t("submit.benefit.insights.desc"),
-      color: "#8BB8DC",
-    },
-    {
-      icon: <Clock size={18} />,
-      title: t("submit.benefit.quick.title"),
-      desc: t("submit.benefit.quick.desc"),
-      color: "#c47ac7",
-    },
-  ];
 
   return (
     <div className="min-h-screen bg-[#000918] relative">
@@ -76,30 +49,6 @@ export default function SubmitPage() {
             {t("submit.subtitle")}
           </p>
         </section>
-
-        {/* Benefits */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-12 animate-fade-up stagger-2">
-          {benefits.map((b, i) => (
-            <div
-              key={b.title}
-              className="glass-card p-4 text-center animate-fade-up"
-              style={{
-                animationDelay: `${i * 0.08}s`,
-                borderColor: `${b.color}20`,
-                background: `${b.color}06`,
-              }}
-            >
-              <div
-                className="w-9 h-9 rounded-xl flex items-center justify-center mx-auto mb-3"
-                style={{ background: `${b.color}15`, color: b.color }}
-              >
-                {b.icon}
-              </div>
-              <div className="text-xs font-bold text-[#F0F4FF] mb-1">{b.title}</div>
-              <div className="text-[10px] text-[#3D6080] leading-relaxed">{b.desc}</div>
-            </div>
-          ))}
-        </div>
 
         {/* Form */}
         <div className="animate-fade-up stagger-3">

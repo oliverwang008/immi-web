@@ -11,7 +11,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { fetchSubmissions, aggregateStats, AggregatedStats, VisaSubmission } from "@/lib/firestore";
 import { VISA_TYPES } from "@/data/visas";
 import { OCCUPATION_CATEGORIES } from "@/data/occupations";
-import { PlusCircle, RefreshCw, Filter, Users, X } from "lucide-react";
+import { PlusCircle, RefreshCw, Filter, Users, X, Shield, TrendingUp, Clock } from "lucide-react";
 import DatePicker from "@/components/DatePicker";
 import clsx from "clsx";
 
@@ -144,6 +144,24 @@ export default function HomePage() {
             </div>
           </div>
         </section>
+
+        {/* Benefits row */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8 animate-fade-up stagger-2">
+          {[
+            { icon: <Users size={16} />, title: t("submit.benefit.helpOthers.title"), desc: t("submit.benefit.helpOthers.desc"), color: "#FFD200" },
+            { icon: <Shield size={16} />, title: t("submit.benefit.anonymous.title"), desc: t("submit.benefit.anonymous.desc"), color: "#00A651" },
+            { icon: <TrendingUp size={16} />, title: t("submit.benefit.insights.title"), desc: t("submit.benefit.insights.desc"), color: "#8BB8DC" },
+            { icon: <Clock size={16} />, title: t("submit.benefit.quick.title"), desc: t("submit.benefit.quick.desc"), color: "#c47ac7" },
+          ].map((b) => (
+            <div key={b.title} className="glass-card p-4 text-center" style={{ borderColor: `${b.color}20`, background: `${b.color}06` }}>
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center mx-auto mb-2" style={{ background: `${b.color}15`, color: b.color }}>
+                {b.icon}
+              </div>
+              <div className="text-xs font-bold text-[#F0F4FF] mb-1">{b.title}</div>
+              <div className="text-[10px] text-[#3D6080] leading-relaxed">{b.desc}</div>
+            </div>
+          ))}
+        </div>
 
         {/* Filter bar */}
         <div className="glass-card p-4 mb-8 animate-fade-up stagger-2">
