@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { Calendar } from "lucide-react";
+import { Calendar, X } from "lucide-react";
 import clsx from "clsx";
 
 interface DatePickerProps {
@@ -12,6 +12,7 @@ interface DatePickerProps {
   min?: string;
   hasError?: boolean;
   placeholder?: string;
+  clearable?: boolean;
 }
 
 const CAL_MONTHS = [
@@ -30,7 +31,7 @@ function initialViewing(value: string, max?: string): Date {
   return new Date();
 }
 
-export default function DatePicker({ value, onChange, max, min, hasError, placeholder }: DatePickerProps) {
+export default function DatePicker({ value, onChange, max, min, hasError, placeholder, clearable }: DatePickerProps) {
   const [open, setOpen] = useState(false);
   const [viewing, setViewing] = useState<Date>(() => initialViewing(value, max));
   const [dropStyle, setDropStyle] = useState<React.CSSProperties>({});
@@ -209,12 +210,22 @@ export default function DatePicker({ value, onChange, max, min, hasError, placeh
         <Calendar size={15} className="input-icon pointer-events-none" />
         <div
           className={clsx("input-field cursor-pointer flex items-center", hasError && "!border-[#C8102E]")}
-          style={{ paddingLeft: "2.5rem", minHeight: "2.75rem" }}
+          style={{ paddingLeft: "2.5rem", paddingRight: clearable && value ? "2.25rem" : undefined, minHeight: "2.75rem" }}
         >
           {displayValue
             ? <span className="text-[#F0F4FF] text-sm">{displayValue}</span>
             : <span className="text-[#3D6080] text-sm">{placeholder ?? "Select date"}</span>}
         </div>
+        {clearable && value && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onChange(""); }}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full text-[#3D6080] hover:text-[#C8102E] hover:bg-[rgba(200,16,46,0.1)] transition-colors"
+            aria-label="Clear date"
+          >
+            <X size={12} />
+          </button>
+        )}
       </div>
 
       {typeof document !== "undefined" && dropdown && createPortal(dropdown, document.body)}

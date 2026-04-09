@@ -1,107 +1,114 @@
 "use client";
 
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, ReferenceLine,
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
 } from "recharts";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { VISA_TYPES } from "@/data/visas";
-import { getAvgProcessingTime } from "@/lib/firestore";
+import { ALL_VISA_TYPES } from "@/data/visas";
 
 interface ProcessingTimeChartProps {
-  processingTimes: Record<string, number[]>;
+  /** visaSubclass → array of day counts (app-to-grant) */
+  data: Record<string, number[]>;
   loading: boolean;
 }
 
-function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number }>; label?: string }) {
+const RANGES = [
+  { key: "lt3mo",   label: "< 3 months",  min: 0,   max: 90  },
+  { key: "3to6mo",  label: "3–6 months",  min: 90,  max: 180 },
+  { key: "6to12mo", label: "6–12 months", min: 180, max: 365 },
+  { key: "1to2yr",  label: "1–2 years",   min: 365, max: 730 },
+  { key: "gt2yr",   label: "> 2 years",   min: 730, max: Infinity },
+];
+
+function CustomTooltip({ active, payload, label }: {
+  active?: boolean;
+  payload?: Array<{ name: string; value: number; color: string }>;
+  label?: string;
+}) {
   if (!active || !payload?.length) return null;
-  const days = payload[0].value;
+  const total = payload.reduce((s, p) => s + (p.value || 0), 0);
   return (
     <div className="glass-card px-4 py-3 text-sm shadow-2xl">
       <div className="font-semibold text-[#F0F4FF] mb-2">{label}</div>
-      <div className="text-[#FFD200] font-bold">{days} days</div>
-      <div className="text-[#8BB8DC] text-xs">{Math.round(days / 30)} months</div>
+      {payload.filter((p) => p.value > 0).map((p) => (
+        <div key={p.name} className="flex items-center gap-2 mb-0.5">
+          <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: p.color }} />
+          <span className="text-[#8BB8DC] text-xs">{p.name}:</span>
+          <span className="font-bold text-xs" style={{ color: p.color }}>{p.value} reports</span>
+        </div>
+      ))}
+      {payload.filter((p) => p.value > 0).length > 1 && (
+        <div className="flex items-center gap-2 mt-1.5 pt-1.5 border-t border-[rgba(255,255,255,0.08)]">
+          <span className="text-[#3D6080] text-xs">Total:</span>
+          <span className="font-bold text-xs text-[#F0F4FF]">{total}</span>
+        </div>
+      )}
     </div>
   );
 }
 
-export default function ProcessingTimeChart({ processingTimes, loading }: ProcessingTimeChartProps) {
+export default function ProcessingTimeChart({ data, loading }: ProcessingTimeChartProps) {
   const { t } = useLanguage();
 
-  const chartData = VISA_TYPES.map((visa) => {
-    const times = processingTimes[visa.subclass] || [];
-    const avg = getAvgProcessingTime(times);
-    const min = times.length ? Math.min(...times) : 0;
-    const max = times.length ? Math.max(...times) : 0;
-    return {
-      name: `SC ${visa.subclass}`,
-      fullName: visa.shortName,
-      avg,
-      min,
-      max,
-      color: visa.color,
-      count: times.length,
-    };
-  }).filter((d) => d.avg > 0);
+  // Visa types that have at least one data point
+  const activeVisas = ALL_VISA_TYPES.filter((v) => (data[v.subclass]?.length ?? 0) > 0);
 
-  if (loading) return <div className="glass-card p-6 h-80 shimmer" />;
+  // Build range-bucket data: each row = one range, columns = visa subclasses
+  const chartData = RANGES.map((range) => {
+    const row: Record<string, string | number> = { range: range.label };
+    activeVisas.forEach((v) => {
+      row[`SC ${v.subclass}`] = (data[v.subclass] ?? []).filter(
+        (d) => d >= range.min && d < range.max
+      ).length;
+    });
+    return row;
+  // Only include rows that have at least one report
+  }).filter((row) => activeVisas.some((v) => (row[`SC ${v.subclass}`] as number) > 0));
+
+  const totalReports = activeVisas.reduce((s, v) => s + (data[v.subclass]?.length ?? 0), 0);
+
+  if (loading) return <div className="glass-card p-6 h-64 shimmer" />;
 
   if (!chartData.length) {
     return (
-      <div className="glass-card p-6 flex items-center justify-center h-64">
+      <div className="glass-card p-6 flex flex-col items-center justify-center h-48 gap-2">
         <p className="text-[#3D6080] text-sm">{t("home.noData")}</p>
+        <p className="text-[#3D6080] text-xs text-center max-w-xs">
+          Requires visa application lodged date — being collected from new submissions
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="glass-card p-6 animate-fade-up stagger-3">
-      <h3 className="font-display font-semibold text-[#F0F4FF] mb-1">
-        {t("home.charts.processingTime")}
-      </h3>
-      <p className="text-xs text-[#3D6080] mb-6">
-        Application lodged → Visa granted (in days)
+    <div className="glass-card p-6 animate-fade-up">
+      <h3 className="font-display font-semibold text-[#F0F4FF] mb-1">Processing Time Distribution</h3>
+      <p className="text-xs text-[#3D6080] mb-5">
+        Reports by time range — application lodged to visa granted · {totalReports} reports
       </p>
-      <ResponsiveContainer width="100%" height={240}>
-        <BarChart data={chartData} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
-          <XAxis
-            dataKey="name"
-            tick={{ fill: "#8BB8DC", fontSize: 11 }}
-            axisLine={false}
-            tickLine={false}
-          />
-          <YAxis
-            tick={{ fill: "#3D6080", fontSize: 11 }}
-            axisLine={false}
-            tickLine={false}
-            tickFormatter={(v) => `${v}d`}
-          />
-          <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(0,61,165,0.2)" }} />
-          <Bar dataKey="avg" radius={[6, 6, 0, 0]} maxBarSize={48}>
-            {chartData.map((entry) => (
-              <Cell key={entry.name} fill={entry.color} opacity={0.85} />
-            ))}
-          </Bar>
+      <ResponsiveContainer width="100%" height={260}>
+        <BarChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: -10 }} barCategoryGap="28%" barGap={0}>
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,61,165,0.2)" vertical={false} />
+          <XAxis dataKey="range" tick={{ fill: "#3D6080", fontSize: 10 }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fill: "#3D6080", fontSize: 10 }} axisLine={false} tickLine={false} allowDecimals={false} />
+          <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
+          <Legend wrapperStyle={{ fontSize: 10, color: "#8BB8DC", paddingTop: 10 }} iconType="square" iconSize={9} />
+          {activeVisas.map((v, i) => (
+            <Bar
+              key={v.subclass}
+              dataKey={`SC ${v.subclass}`}
+              stackId="visa"
+              fill={v.color}
+              opacity={0.88}
+              radius={i === activeVisas.length - 1 ? [3, 3, 0, 0] : [0, 0, 0, 0]}
+              maxBarSize={48}
+            />
+          ))}
         </BarChart>
       </ResponsiveContainer>
-
-      {/* Legend detail */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-4 pt-4 border-t border-[rgba(0,61,165,0.3)]">
-        {chartData.map((d) => (
-          <div key={d.name} className="text-xs">
-            <div className="flex items-center gap-1.5 mb-0.5">
-              <span className="w-2 h-2 rounded-full" style={{ background: d.color }} />
-              <span className="text-[#8BB8DC]">{d.name}</span>
-            </div>
-            <div className="font-bold" style={{ color: d.color }}>{d.avg}d avg</div>
-            {d.min > 0 && (
-              <div className="text-[10px] text-[#3D6080]">
-                {d.min}–{d.max}d range
-              </div>
-            )}
-            <div className="text-[10px] text-[#3D6080]">{d.count} samples</div>
-          </div>
-        ))}
-      </div>
+      <p className="text-[10px] text-[#3D6080] mt-3 italic">
+        * Includes backfilled estimates for submissions missing lodgement date.
+      </p>
     </div>
   );
 }

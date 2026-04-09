@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { LANGUAGES } from "@/i18n/translations";
 import { useState } from "react";
-import { Globe, BarChart2, PlusCircle, ChevronDown, X, Menu } from "lucide-react";
+import { Globe, BarChart2, PlusCircle, ChevronDown, X, Menu, Newspaper } from "lucide-react";
 import clsx from "clsx";
 
 export default function Header() {
@@ -64,6 +64,18 @@ export default function Header() {
           >
             <PlusCircle size={15} />
             {t("nav.submit")}
+          </Link>
+          <Link
+            href="/news"
+            className={clsx(
+              "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+              pathname === "/news"
+                ? "bg-[rgba(255,210,0,0.12)] text-[#FFD200] border border-[rgba(255,210,0,0.2)]"
+                : "text-[#8BB8DC] hover:text-[#F0F4FF] hover:bg-[rgba(0,61,165,0.3)]"
+            )}
+          >
+            <Newspaper size={15} />
+            News
           </Link>
         </nav>
 
@@ -156,6 +168,19 @@ export default function Header() {
             >
               <PlusCircle size={16} />
               {t("nav.submit")}
+            </Link>
+            <Link
+              href="/news"
+              onClick={() => setMobileMenuOpen(false)}
+              className={clsx(
+                "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all",
+                pathname === "/news"
+                  ? "bg-[rgba(255,210,0,0.12)] text-[#FFD200]"
+                  : "text-[#8BB8DC] hover:bg-[rgba(0,61,165,0.3)] hover:text-[#F0F4FF]"
+              )}
+            >
+              <Newspaper size={16} />
+              News
             </Link>
           </div>
         </div>

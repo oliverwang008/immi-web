@@ -58,10 +58,18 @@ export default function SubmitPage() {
 
       {/* Footer */}
       <footer className="relative z-10 border-t border-[rgba(0,61,165,0.3)] py-8 px-4 sm:px-6">
-        <div className="max-w-5xl mx-auto">
-          <p className="text-xs text-[#3D6080] text-center max-w-xl mx-auto leading-relaxed">
+        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+          <p className="text-xs text-[#3D6080] text-center sm:text-left max-w-xl leading-relaxed">
             {t("footer.disclaimer")}
           </p>
+          <div className="flex flex-col sm:items-end gap-1 shrink-0">
+            <a href="mailto:support@olitech.org" className="text-xs text-[#3D6080] hover:text-[#8BB8DC] transition-colors">
+              support@olitech.org
+            </a>
+            <div className="text-xs text-[#3D6080] whitespace-nowrap">
+              © 2025 OLITECH AI PTY LTD · {t("footer.rights")}
+            </div>
+          </div>
         </div>
       </footer>
     </div>

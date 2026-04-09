@@ -149,6 +149,9 @@ export const OCCUPATIONS: Occupation[] = [
   { code: "251611", title: "Optometrist", category: "Healthcare", list: ["CSOL", "TSS"] },
   { code: "251612", title: "Orthoptist", category: "Healthcare", list: ["CSOL"] },
   { code: "251911", title: "Health Promotion Officer", category: "Healthcare", list: ["CSOL"] },
+  { code: "251712", title: "Speech Pathologist", category: "Healthcare", list: ["CSOL", "TSS"] },
+  { code: "251711", title: "Audiologist", category: "Healthcare", list: ["CSOL", "TSS"] },
+  { code: "251312", title: "Occupational Health & Safety Adviser", category: "Healthcare", list: ["CSOL", "TSS"] },
   { code: "254211", title: "Nurse Practitioner", category: "Healthcare", list: ["CSOL", "TSS"] },
   { code: "254212", title: "Registered Nurse (Paediatrics)", category: "Healthcare", list: ["CSOL", "TSS"] },
   { code: "254213", title: "Registered Nurse (Aged Care)", category: "Healthcare", list: ["CSOL", "TSS"] },
@@ -211,6 +214,7 @@ export const OCCUPATIONS: Occupation[] = [
   { code: "234912", title: "Forensic Scientist", category: "Science & Research", list: ["CSOL"] },
   { code: "234913", title: "Marine Biologist", category: "Science & Research", list: ["CSOL"] },
   { code: "234999", title: "Natural and Physical Science Professional (nec)", category: "Science & Research", list: ["CSOL"] },
+  { code: "233921", title: "Food Technologist", category: "Science & Research", list: ["CSOL", "TSS"] },
 
   // Trades & Technical
   { code: "321111", title: "Motor Mechanic (General)", category: "Trades & Technical", list: ["CSOL", "TSS"] },

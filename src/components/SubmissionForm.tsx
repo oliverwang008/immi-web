@@ -1,27 +1,31 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import DatePicker from "@/components/DatePicker";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { VISA_TYPES, AUSTRALIAN_STATES, isStateSponsored, FAMILY_SPONSORED_VISAS } from "@/data/visas";
+import {
+  ALL_VISA_TYPES, SKILL_VISA_SUBCLASSES, AUSTRALIAN_STATES,
+  isStateSponsored, FAMILY_SPONSORED_VISAS, VISA_CATEGORY_LABELS,
+  getVisaBySubclass,
+} from "@/data/visas";
 import { searchOccupations, Occupation } from "@/data/occupations";
 import {
-  POINTS_CRITERIA, POINTS_TESTED_VISAS, DEFAULT_POINTS_SCORE,
+  POINTS_CRITERIA, DEFAULT_POINTS_SCORE,
   PointsScore, calcTotalPoints, POINTS_MIN, UNSET_POINTS,
 } from "@/data/points";
 import { submitVisa } from "@/lib/firestore";
 import {
   Search, ChevronRight, CheckCircle2,
-  Shield, FileText, Clock, Award, MapPin, Star, Mail, Calendar, Info,
+  Shield, Clock, Star, Mail, Calendar, Info, MapPin,
 } from "lucide-react";
 import clsx from "clsx";
 
 // ── Form state ─────────────────────────────────────────────────────────
 interface FormState {
-  currentStatus: string;        // "eoi_invited" | "grant_received" | ""
+  currentStatus: string;        // "eoi_invited" | "grant_received"
   statusDate: string;           // required
+  visaApplicationDate: string;  // required for grant_received; before grant date
   eoiInvitedDate: string;       // optional – grant_received only
-  visaApplicationDate: string;  // optional – grant_received only (between invited & grant)
   eoiLodgeDate: string;         // optional – both statuses
   visaSubclass: string;
   sponsoringState: string;
@@ -36,8 +40,8 @@ interface FormState {
 const INITIAL_STATE: FormState = {
   currentStatus: "",
   statusDate: "",
-  eoiInvitedDate: "",
   visaApplicationDate: "",
+  eoiInvitedDate: "",
   eoiLodgeDate: "",
   visaSubclass: "",
   sponsoringState: "",
@@ -49,8 +53,6 @@ const INITIAL_STATE: FormState = {
   agreedToTerms: false,
 };
 
-// Step 0 → Status, Step 1 → Visa, Step 2 → Occupation, Step 3 → Details
-const STEP_ICONS = [Clock, FileText, Search, Star];
 const DATE_MAX = new Date().toISOString().split("T")[0];
 
 function isValidDate(d: string) {
@@ -58,6 +60,12 @@ function isValidDate(d: string) {
   if (d > DATE_MAX) return false;
   return !isNaN(new Date(d).getTime());
 }
+
+// Group ALL_VISA_TYPES by category for the grouped dropdown
+const GROUPED_VISAS = Object.entries(VISA_CATEGORY_LABELS).map(([cat, label]) => ({
+  label,
+  visas: ALL_VISA_TYPES.filter((v) => v.category === cat),
+})).filter((g) => g.visas.length > 0);
 
 export default function SubmissionForm() {
   const { t, lang } = useLanguage();
@@ -70,21 +78,31 @@ export default function SubmissionForm() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
-  // Tracks which option index was selected per criterion (for display disambiguation)
   const [pointsOptIdx, setPointsOptIdx] = useState<Record<string, number>>({});
+  const [shareScore, setShareScore] = useState<boolean | null>(null);
   const occRef = useRef<HTMLDivElement>(null);
 
-  const isPointsTested = POINTS_TESTED_VISAS.includes(form.visaSubclass);
+  const selectedVisa = useMemo(() => getVisaBySubclass(form.visaSubclass), [form.visaSubclass]);
+  const isPointsTested = selectedVisa?.hasPoints ?? false;
+  const needsOccupation = selectedVisa?.hasOccupation ?? false;
   const isStateSponsoredVisa = isStateSponsored(form.visaSubclass);
   const hasFamilyOption = FAMILY_SPONSORED_VISAS.includes(form.visaSubclass);
   const totalPoints = calcTotalPoints(form.points);
 
-  const steps = [
+  // Dynamic steps: step 0 = outcome+visa, step 1 (conditional) = occupation, last = details
+  const steps = useMemo(() => [
     t("submit.step.statusHistory"),
-    t("submit.step.visa"),
-    t("submit.step.occupation"),
-    t("submit.step.details"),
-  ];
+    ...(needsOccupation ? [t("submit.step.occupation")] : []),
+    t("submit.step.review"),
+  ], [t, needsOccupation]);
+
+  const stepIcons = useMemo(() => [
+    Clock,
+    ...(needsOccupation ? [Search] : []),
+    Star,
+  ], [needsOccupation]);
+
+  const detailsStep = steps.length - 1;
 
   useEffect(() => {
     if (occupationSearch.trim().length > 0) {
@@ -111,6 +129,14 @@ export default function SubmissionForm() {
     }
   }, [form.visaSubclass]);
 
+  // Reset occupation if new visa doesn't need it
+  useEffect(() => {
+    if (form.visaSubclass && !needsOccupation) {
+      setForm((f) => ({ ...f, occupationCode: "", occupationTitle: "", occupationCategory: "" }));
+      setOccupationSearch("");
+    }
+  }, [form.visaSubclass, needsOccupation]);
+
   const clearErr = (key: string) =>
     setErrors((prev) => { const next = { ...prev }; delete next[key]; return next; });
 
@@ -118,46 +144,44 @@ export default function SubmissionForm() {
   const validate = (s: number): boolean => {
     const newErrors: Record<string, string> = {};
 
-    // Step 0 — Status & dates
+    // Step 0 — Outcome, dates, visa type, state
     if (s === 0) {
       if (!form.currentStatus) {
         newErrors.currentStatus = t("submit.required");
       } else {
+        // Status date
         if (!form.statusDate) {
           newErrors.statusDate = t("submit.required");
         } else if (!isValidDate(form.statusDate)) {
           newErrors.statusDate = t("submit.error.invalidDate");
-        } else if (form.statusDate > DATE_MAX) {
-          newErrors.statusDate = t("submit.error.dateFuture");
         }
 
-        if (form.eoiInvitedDate) {
-          if (!isValidDate(form.eoiInvitedDate)) {
-            newErrors.eoiInvitedDate = t("submit.error.invalidDate");
-          } else if (form.eoiInvitedDate > DATE_MAX) {
-            newErrors.eoiInvitedDate = t("submit.error.dateFuture");
-          } else if (form.statusDate && form.eoiInvitedDate >= form.statusDate) {
-            newErrors.eoiInvitedDate = t("submit.error.eoiInvitedBeforeGrant");
-          }
-        }
-
-        if (form.visaApplicationDate) {
-          if (!isValidDate(form.visaApplicationDate)) {
+        // Visa application date — mandatory for grant_received
+        if (form.currentStatus === "grant_received") {
+          if (!form.visaApplicationDate) {
+            newErrors.visaApplicationDate = t("submit.required");
+          } else if (!isValidDate(form.visaApplicationDate)) {
             newErrors.visaApplicationDate = t("submit.error.invalidDate");
-          } else if (form.visaApplicationDate > DATE_MAX) {
-            newErrors.visaApplicationDate = t("submit.error.dateFuture");
-          } else if (form.eoiInvitedDate && form.visaApplicationDate <= form.eoiInvitedDate) {
-            newErrors.visaApplicationDate = t("submit.error.visaAppAfterInvited");
           } else if (form.statusDate && form.visaApplicationDate >= form.statusDate) {
             newErrors.visaApplicationDate = t("submit.error.visaAppBeforeGrant");
           }
         }
 
+        // EOI invited date (optional, grant_received)
+        if (form.eoiInvitedDate) {
+          if (!isValidDate(form.eoiInvitedDate)) {
+            newErrors.eoiInvitedDate = t("submit.error.invalidDate");
+          } else if (form.statusDate && form.eoiInvitedDate >= form.statusDate) {
+            newErrors.eoiInvitedDate = t("submit.error.eoiInvitedBeforeGrant");
+          } else if (form.visaApplicationDate && form.eoiInvitedDate >= form.visaApplicationDate) {
+            newErrors.eoiInvitedDate = t("submit.error.eoiInvitedBeforeGrant");
+          }
+        }
+
+        // EOI lodge date (optional)
         if (form.eoiLodgeDate) {
           if (!isValidDate(form.eoiLodgeDate)) {
             newErrors.eoiLodgeDate = t("submit.error.invalidDate");
-          } else if (form.eoiLodgeDate > DATE_MAX) {
-            newErrors.eoiLodgeDate = t("submit.error.dateFuture");
           } else if (form.currentStatus === "eoi_invited") {
             if (form.statusDate && form.eoiLodgeDate >= form.statusDate) {
               newErrors.eoiLodgeDate = t("submit.error.eoiLodgeBeforeInvited");
@@ -165,25 +189,27 @@ export default function SubmissionForm() {
           } else if (form.currentStatus === "grant_received") {
             if (form.eoiInvitedDate && form.eoiLodgeDate >= form.eoiInvitedDate) {
               newErrors.eoiLodgeDate = t("submit.error.eoiLodgeBeforeInvited");
-            } else if (!form.eoiInvitedDate && form.statusDate && form.eoiLodgeDate >= form.statusDate) {
-              newErrors.eoiLodgeDate = t("submit.error.eoiLodgeBeforeGrant");
+            } else if (!form.eoiInvitedDate && form.visaApplicationDate && form.eoiLodgeDate >= form.visaApplicationDate) {
+              newErrors.eoiLodgeDate = t("submit.error.eoiLodgeBeforeInvited");
             }
           }
         }
       }
-    }
 
-    // Step 1 — Visa type
-    if (s === 1) {
+      // Visa subclass required
       if (!form.visaSubclass) newErrors.visaSubclass = t("submit.required");
+
+      // State required if applicable
       if (isStateSponsoredVisa && !form.sponsoringState) newErrors.sponsoringState = t("submit.required");
     }
 
-    // Step 2 — Occupation
-    if (s === 2 && !form.occupationCode) newErrors.occupation = t("submit.required");
+    // Step 1 — Occupation (only when needsOccupation)
+    if (s === 1 && needsOccupation) {
+      if (!form.occupationCode) newErrors.occupation = t("submit.required");
+    }
 
-    // Step 3 — Details
-    if (s === 3) {
+    // Details step
+    if (s === detailsStep) {
       if (!form.agreedToTerms) newErrors.terms = t("submit.terms.required");
       if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
         newErrors.email = t("submit.required");
@@ -216,7 +242,7 @@ export default function SubmissionForm() {
   };
 
   const handleSubmit = async () => {
-    if (!validate(3)) return;
+    if (!validate(detailsStep)) return;
     setSubmitting(true);
     setError("");
     try {
@@ -237,9 +263,15 @@ export default function SubmissionForm() {
 
       await submitVisa({
         visaSubclass: form.visaSubclass,
-        occupationCode: form.occupationCode,
-        occupationTitle: form.occupationTitle,
-        occupationCategory: form.occupationCategory,
+        ...(needsOccupation && form.occupationCode ? {
+          occupationCode: form.occupationCode,
+          occupationTitle: form.occupationTitle,
+          occupationCategory: form.occupationCategory,
+        } : {
+          occupationCode: "",
+          occupationTitle: "",
+          occupationCategory: "",
+        }),
         ...(isStateSponsoredVisa && form.sponsoringState ? { sponsoringState: form.sponsoringState } : {}),
         statuses,
         currentStatus: form.currentStatus,
@@ -249,7 +281,7 @@ export default function SubmissionForm() {
           ? { eoiInvitedDate: form.eoiInvitedDate } : {}),
         ...(form.currentStatus === "grant_received" && form.visaApplicationDate
           ? { visaApplicationDate: form.visaApplicationDate } : {}),
-        ...(isPointsTested && Object.keys(storedPoints).length
+        ...(isPointsTested && shareScore === true && Object.keys(storedPoints).length
           ? { pointsScore: storedPoints, totalPoints } : {}),
         ...(form.email ? { email: form.email } : {}),
         lang,
@@ -269,6 +301,8 @@ export default function SubmissionForm() {
     setSubmitted(false);
     setError("");
     setErrors({});
+    setShareScore(null);
+    setPointsOptIdx({});
   };
 
   // ── Success ─────────────────────────────────────────────────────────
@@ -289,6 +323,11 @@ export default function SubmissionForm() {
     { key: "grant_received", label: t("submit.status.visaGranted"), icon: <CheckCircle2 size={18} />, color: "#00A651" },
   ];
 
+  // Visa options depend on selected outcome
+  const availableVisas = form.currentStatus === "eoi_invited"
+    ? ALL_VISA_TYPES.filter((v) => SKILL_VISA_SUBCLASSES.includes(v.subclass))
+    : ALL_VISA_TYPES;
+
   // ── Main form ────────────────────────────────────────────────────────
   return (
     <div className="max-w-2xl mx-auto">
@@ -296,7 +335,7 @@ export default function SubmissionForm() {
       {/* Progress stepper */}
       <div className="flex items-center justify-between mb-8">
         {steps.map((label, i) => {
-          const Icon = STEP_ICONS[i];
+          const Icon = stepIcons[i];
           const isActive = i === step;
           const isDone = i < step;
           return (
@@ -337,7 +376,7 @@ export default function SubmissionForm() {
       {/* Step card */}
       <div className="glass-card p-6 sm:p-8 animate-fade-up">
 
-        {/* ── Step 0: Status & Dates ────────────────────────────────── */}
+        {/* ── Step 0: Outcome + Visa + State ───────────────────────── */}
         {step === 0 && (
           <div>
             <h2 className="font-display text-xl font-semibold text-[#F0F4FF] mb-1">
@@ -352,7 +391,7 @@ export default function SubmissionForm() {
               </p>
             </div>
 
-            {/* Status selection cards */}
+            {/* Outcome selection */}
             <p className="text-sm text-[#3D6080] mb-3">{t("submit.status.selectStatus")}</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-2">
               {statusOptions.map((opt) => (
@@ -363,9 +402,11 @@ export default function SubmissionForm() {
                       ...f,
                       currentStatus: opt.key,
                       statusDate: "",
-                      eoiInvitedDate: "",
                       visaApplicationDate: "",
+                      eoiInvitedDate: "",
                       eoiLodgeDate: "",
+                      visaSubclass: "",
+                      sponsoringState: "",
                     }));
                     setErrors({});
                   }}
@@ -377,10 +418,8 @@ export default function SubmissionForm() {
                   )}
                 >
                   <div className="flex items-center gap-3">
-                    <div
-                      className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                      style={{ background: `${opt.color}18`, color: opt.color, border: `1px solid ${opt.color}30` }}
-                    >
+                    <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                      style={{ background: `${opt.color}18`, color: opt.color, border: `1px solid ${opt.color}30` }}>
                       {opt.icon}
                     </div>
                     <span className="text-sm font-semibold text-[#F0F4FF] flex-1">{opt.label}</span>
@@ -393,16 +432,83 @@ export default function SubmissionForm() {
             </div>
             {errors.currentStatus && <p className="text-[#C8102E] text-xs mb-4 mt-1">{errors.currentStatus}</p>}
 
-            {/* Date fields — shown after status is chosen */}
+            {/* Fields shown after outcome is chosen */}
             {form.currentStatus && (
               <div className="space-y-4 mt-5 animate-fade-in">
 
-                {/* Required: date of selected status */}
+                {/* ① Visa subclass — first choice after outcome */}
+                <div className="p-4 rounded-xl border border-[rgba(0,61,165,0.4)] bg-[rgba(0,16,40,0.4)]">
+                  <label className="text-sm font-semibold text-[#F0F4FF] block mb-2">
+                    Visa Subclass <span className="text-[#C8102E]">*</span>
+                    {form.currentStatus === "eoi_invited" && (
+                      <span className="ml-2 text-[10px] text-[#3D6080] font-normal">(EOI-eligible visas only)</span>
+                    )}
+                  </label>
+                  <select
+                    className="input-field"
+                    value={form.visaSubclass}
+                    onChange={(e) => {
+                      setForm((f) => ({ ...f, visaSubclass: e.target.value, sponsoringState: "" }));
+                      clearErr("visaSubclass");
+                    }}
+                  >
+                    <option value="">Select visa subclass</option>
+                    {form.currentStatus === "eoi_invited" ? (
+                      availableVisas.map((v) => (
+                        <option key={v.subclass} value={v.subclass}>
+                          SC {v.subclass} — {v.name}
+                        </option>
+                      ))
+                    ) : (
+                      GROUPED_VISAS.map((group) => (
+                        <optgroup key={group.label} label={group.label}>
+                          {group.visas.map((v) => (
+                            <option key={v.subclass} value={v.subclass}>
+                              SC {v.subclass} — {v.name}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ))
+                    )}
+                  </select>
+                  {errors.visaSubclass && <p className="text-[#C8102E] text-xs mt-1.5">{errors.visaSubclass}</p>}
+                </div>
+
+                {/* ② Sponsoring state — appears immediately if applicable */}
+                {form.visaSubclass && isStateSponsoredVisa && (
+                  <div className="p-4 rounded-xl border border-[rgba(0,61,165,0.4)] bg-[rgba(0,61,165,0.06)] animate-fade-in">
+                    <div className="flex items-center gap-2 mb-3">
+                      <MapPin size={15} className="text-[#8BB8DC] shrink-0" />
+                      <label className="text-sm font-semibold text-[#F0F4FF]">
+                        {t("submit.state.label")} <span className="text-[#C8102E]">*</span>
+                      </label>
+                    </div>
+                    <select
+                      className="input-field"
+                      value={form.sponsoringState}
+                      onChange={(e) => setForm((f) => ({ ...f, sponsoringState: e.target.value }))}
+                    >
+                      <option value="">{t("submit.state.select")}</option>
+                      {AUSTRALIAN_STATES.map((s) => (
+                        <option key={s.code} value={s.code}>{s.name} ({s.code})</option>
+                      ))}
+                      {hasFamilyOption && (
+                        <option value="FAMILY">{t("submit.state.family")}</option>
+                      )}
+                    </select>
+                    {errors.sponsoringState && (
+                      <p className="text-[#C8102E] text-xs mt-1.5">{errors.sponsoringState}</p>
+                    )}
+                  </div>
+                )}
+
+                {/* ③ Date fields */}
+                {/* Grant / EOI date */}
                 <div className="p-4 rounded-xl border border-[rgba(0,61,165,0.4)] bg-[rgba(0,16,40,0.4)]">
                   <label className="text-sm font-semibold text-[#F0F4FF] block mb-2">
                     {form.currentStatus === "eoi_invited"
                       ? t("submit.status.eoiInvited")
-                      : t("submit.status.visaGranted")}
+                      : t("submit.status.visaGrantedDate")}
                     {" "}<span className="text-[#C8102E]">*</span>
                   </label>
                   <DatePicker
@@ -414,138 +520,69 @@ export default function SubmissionForm() {
                   {errors.statusDate && <p className="text-[#C8102E] text-[10px] mt-1">{errors.statusDate}</p>}
                 </div>
 
-                {/* Optional date fields for grant_received */}
+                {/* Visa Application Date — mandatory for grant_received */}
                 {form.currentStatus === "grant_received" && (
-                  <>
-                    {/* EOI Invited Date */}
-                    <div className="p-4 rounded-xl border border-[rgba(0,61,165,0.3)] bg-[rgba(0,16,40,0.3)] animate-fade-in">
-                      <label className="text-sm font-medium text-[#8BB8DC] block mb-1">
-                        {t("submit.status.eoiInvitedDate")}
-                      </label>
-                      <p className="text-[10px] text-[#3D6080] mb-2">{t("submit.status.eoiInvitedDateHint")}</p>
-                      <DatePicker
-                        value={form.eoiInvitedDate}
-                        max={form.statusDate || DATE_MAX}
-                        hasError={!!errors.eoiInvitedDate}
-                        onChange={(v) => { setForm((f) => ({ ...f, eoiInvitedDate: v })); clearErr("eoiInvitedDate"); }}
-                      />
-                      {errors.eoiInvitedDate && <p className="text-[#C8102E] text-[10px] mt-1">{errors.eoiInvitedDate}</p>}
-                    </div>
-
-                    {/* Visa Application Date */}
-                    <div className="p-4 rounded-xl border border-[rgba(0,61,165,0.3)] bg-[rgba(0,16,40,0.3)] animate-fade-in">
-                      <label className="text-sm font-medium text-[#8BB8DC] block mb-1">
-                        {t("submit.status.visaApplicationDate")}
-                      </label>
-                      <p className="text-[10px] text-[#3D6080] mb-2">{t("submit.status.visaApplicationDateHint")}</p>
-                      <DatePicker
-                        value={form.visaApplicationDate}
-                        min={form.eoiInvitedDate || undefined}
-                        max={form.statusDate || DATE_MAX}
-                        hasError={!!errors.visaApplicationDate}
-                        onChange={(v) => { setForm((f) => ({ ...f, visaApplicationDate: v })); clearErr("visaApplicationDate"); }}
-                      />
-                      {errors.visaApplicationDate && <p className="text-[#C8102E] text-[10px] mt-1">{errors.visaApplicationDate}</p>}
-                    </div>
-                  </>
+                  <div className="p-4 rounded-xl border border-[rgba(0,61,165,0.4)] bg-[rgba(0,16,40,0.4)] animate-fade-in">
+                    <label className="text-sm font-semibold text-[#F0F4FF] block mb-1">
+                      {t("submit.status.visaApplicationDate")} <span className="text-[#C8102E]">*</span>
+                    </label>
+                    <p className="text-[10px] text-[#3D6080] mb-2">{t("submit.status.visaApplicationDateHint")}</p>
+                    <DatePicker
+                      value={form.visaApplicationDate}
+                      max={form.statusDate || DATE_MAX}
+                      hasError={!!errors.visaApplicationDate}
+                      onChange={(v) => { setForm((f) => ({ ...f, visaApplicationDate: v })); clearErr("visaApplicationDate"); }}
+                    />
+                    {errors.visaApplicationDate && <p className="text-[#C8102E] text-[10px] mt-1">{errors.visaApplicationDate}</p>}
+                  </div>
                 )}
 
-                {/* EOI Submission Date — both statuses */}
-                <div className="p-4 rounded-xl border border-[rgba(0,61,165,0.3)] bg-[rgba(0,16,40,0.3)]">
-                  <label className="text-sm font-medium text-[#8BB8DC] block mb-1">
-                    {t("submit.status.eoiLodgeDate")}
-                  </label>
-                  <p className="text-[10px] text-[#3D6080] mb-2">{t("submit.status.eoiLodgeDateHint")}</p>
-                  <DatePicker
-                    value={form.eoiLodgeDate}
-                    max={
-                      form.currentStatus === "eoi_invited"
-                        ? (form.statusDate || DATE_MAX)
-                        : (form.eoiInvitedDate || form.statusDate || DATE_MAX)
-                    }
-                    hasError={!!errors.eoiLodgeDate}
-                    onChange={(v) => { setForm((f) => ({ ...f, eoiLodgeDate: v })); clearErr("eoiLodgeDate"); }}
-                  />
-                  {errors.eoiLodgeDate && <p className="text-[#C8102E] text-[10px] mt-1">{errors.eoiLodgeDate}</p>}
-                </div>
-
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ── Step 1: Visa Type ─────────────────────────────────────── */}
-        {step === 1 && (
-          <div>
-            <h2 className="font-display text-xl font-semibold text-[#F0F4FF] mb-1">{t("submit.step.visa")}</h2>
-            <p className="text-sm text-[#3D6080] mb-6">{t("submit.visa.select")}</p>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
-              {VISA_TYPES.map((visa) => (
-                <button
-                  key={visa.subclass}
-                  onClick={() => setForm((f) => ({ ...f, visaSubclass: visa.subclass }))}
-                  className={clsx(
-                    "text-left p-4 rounded-xl border transition-all duration-200",
-                    form.visaSubclass === visa.subclass
-                      ? "border-[rgba(255,210,0,0.5)] bg-[rgba(255,210,0,0.05)]"
-                      : "border-[rgba(0,61,165,0.45)] bg-[rgba(0,16,40,0.4)] hover:border-[rgba(0,61,165,0.8)] hover:bg-[rgba(0,30,85,0.4)]"
-                  )}
-                >
-                  <div className="flex items-start gap-3">
-                    <div
-                      className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 font-display font-bold text-sm"
-                      style={{ background: `${visa.color}18`, color: visa.color, border: `1px solid ${visa.color}30` }}
-                    >
-                      {visa.subclass}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-xs font-bold text-[#F0F4FF] leading-tight">{visa.shortName}</div>
-                      <div className="text-[10px] text-[#3D6080] mt-1 leading-tight line-clamp-2">{visa.name}</div>
-                    </div>
-                    {form.visaSubclass === visa.subclass && (
-                      <CheckCircle2 size={16} className="shrink-0 ml-auto" style={{ color: visa.color }} />
-                    )}
-                  </div>
-                </button>
-              ))}
-            </div>
-            {errors.visaSubclass && <p className="text-[#C8102E] text-xs mb-4">{errors.visaSubclass}</p>}
-
-            {/* Sponsoring state */}
-            {isStateSponsoredVisa && (
-              <div className="animate-fade-in">
-                <div className="p-4 rounded-xl border border-[rgba(0,61,165,0.4)] bg-[rgba(0,61,165,0.06)]">
-                  <div className="flex items-center gap-2 mb-3">
-                    <MapPin size={15} className="text-[#8BB8DC] shrink-0" />
-                    <label className="text-sm font-semibold text-[#F0F4FF]">
-                      {t("submit.state.label")} <span className="text-[#C8102E]">*</span>
+                {/* EOI Invited Date — optional, grant_received + skill visas only */}
+                {form.currentStatus === "grant_received" && SKILL_VISA_SUBCLASSES.includes(form.visaSubclass) && (
+                  <div className="p-4 rounded-xl border border-[rgba(0,61,165,0.3)] bg-[rgba(0,16,40,0.3)] animate-fade-in">
+                    <label className="text-sm font-medium text-[#8BB8DC] block mb-1">
+                      {t("submit.status.eoiInvitedDate")}
                     </label>
+                    <p className="text-[10px] text-[#3D6080] mb-2">{t("submit.status.eoiInvitedDateHint")}</p>
+                    <DatePicker
+                      value={form.eoiInvitedDate}
+                      max={form.visaApplicationDate || form.statusDate || DATE_MAX}
+                      hasError={!!errors.eoiInvitedDate}
+                      clearable
+                      onChange={(v) => { setForm((f) => ({ ...f, eoiInvitedDate: v })); clearErr("eoiInvitedDate"); }}
+                    />
+                    {errors.eoiInvitedDate && <p className="text-[#C8102E] text-[10px] mt-1">{errors.eoiInvitedDate}</p>}
                   </div>
-                  <select
-                    className="input-field"
-                    value={form.sponsoringState}
-                    onChange={(e) => setForm((f) => ({ ...f, sponsoringState: e.target.value }))}
-                  >
-                    <option value="">{t("submit.state.select")}</option>
-                    {AUSTRALIAN_STATES.map((s) => (
-                      <option key={s.code} value={s.code}>{s.name} ({s.code})</option>
-                    ))}
-                    {hasFamilyOption && (
-                      <option value="FAMILY">{t("submit.state.family")}</option>
-                    )}
-                  </select>
-                  {errors.sponsoringState && (
-                    <p className="text-[#C8102E] text-xs mt-1.5">{errors.sponsoringState}</p>
-                  )}
-                </div>
+                )}
+
+                {/* EOI Submission Date — skill visas only */}
+                {SKILL_VISA_SUBCLASSES.includes(form.visaSubclass) && (
+                  <div className="p-4 rounded-xl border border-[rgba(0,61,165,0.3)] bg-[rgba(0,16,40,0.3)]">
+                    <label className="text-sm font-medium text-[#8BB8DC] block mb-1">
+                      {t("submit.status.eoiLodgeDate")}
+                    </label>
+                    <p className="text-[10px] text-[#3D6080] mb-2">{t("submit.status.eoiLodgeDateHint")}</p>
+                    <DatePicker
+                      value={form.eoiLodgeDate}
+                      max={
+                        form.currentStatus === "eoi_invited"
+                          ? (form.statusDate || DATE_MAX)
+                          : (form.eoiInvitedDate || form.visaApplicationDate || form.statusDate || DATE_MAX)
+                      }
+                      hasError={!!errors.eoiLodgeDate}
+                      clearable
+                      onChange={(v) => { setForm((f) => ({ ...f, eoiLodgeDate: v })); clearErr("eoiLodgeDate"); }}
+                    />
+                    {errors.eoiLodgeDate && <p className="text-[#C8102E] text-[10px] mt-1">{errors.eoiLodgeDate}</p>}
+                  </div>
+                )}
               </div>
             )}
           </div>
         )}
 
-        {/* ── Step 2: Occupation ────────────────────────────────────── */}
-        {step === 2 && (
+        {/* ── Occupation step ───────────────────────────────────────── */}
+        {needsOccupation && step === 1 && (
           <div>
             <h2 className="font-display text-xl font-semibold text-[#F0F4FF] mb-1">{t("submit.step.occupation")}</h2>
             <p className="text-sm text-[#3D6080] mb-6">{t("submit.occupation.search")}</p>
@@ -598,7 +635,7 @@ export default function SubmissionForm() {
             {form.occupationCode && (
               <div className="p-4 rounded-xl border border-[rgba(0,166,81,0.3)] bg-[rgba(0,166,81,0.05)] animate-fade-in">
                 <div className="flex items-center gap-3">
-                  <Award size={18} className="text-[#00A651] shrink-0" />
+                  <Search size={18} className="text-[#00A651] shrink-0" />
                   <div>
                     <div className="text-sm font-semibold text-[#F0F4FF]">{form.occupationTitle}</div>
                     <div className="text-xs text-[#8BB8DC]">ANZSCO {form.occupationCode} · {form.occupationCategory}</div>
@@ -610,78 +647,111 @@ export default function SubmissionForm() {
           </div>
         )}
 
-        {/* ── Step 3: Details ───────────────────────────────────────── */}
-        {step === 3 && (
+        {/* ── Details step ─────────────────────────────────────────── */}
+        {step === detailsStep && (
           <div>
-            <h2 className="font-display text-xl font-semibold text-[#F0F4FF] mb-6">{t("submit.step.details")}</h2>
+            <h2 className="font-display text-xl font-semibold text-[#F0F4FF] mb-6">{t("submit.step.review")}</h2>
 
             {/* Points — only for 189 / 190 / 491 */}
             {isPointsTested && (
               <div className="mb-8">
-                <div className="flex items-center gap-2 mb-1">
-                  <Star size={15} className="text-[#FFD200]" />
-                  <span className="text-sm font-semibold text-[#F0F4FF]">{t("submit.points.title")}</span>
+                <div className="p-4 rounded-xl border border-[rgba(255,210,0,0.25)] bg-[rgba(255,210,0,0.05)]">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Star size={15} className="text-[#FFD200]" />
+                    <span className="text-sm font-semibold text-[#F0F4FF]">Would you like to share your points score breakdown?</span>
+                  </div>
+                  <p className="text-xs text-[#3D6080] mb-4">This is optional — sharing your score helps the community compare invitation thresholds.</p>
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setShareScore(true)}
+                      className={clsx(
+                        "flex-1 py-2 rounded-lg text-sm font-semibold border transition-all",
+                        shareScore === true
+                          ? "bg-[rgba(255,210,0,0.12)] border-[rgba(255,210,0,0.5)] text-[#FFD200]"
+                          : "border-[rgba(0,61,165,0.45)] text-[#3D6080] hover:border-[rgba(255,210,0,0.3)] hover:text-[#8BB8DC]"
+                      )}
+                    >
+                      Yes, share my score
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShareScore(false)}
+                      className={clsx(
+                        "flex-1 py-2 rounded-lg text-sm font-semibold border transition-all",
+                        shareScore === false
+                          ? "bg-[rgba(0,61,165,0.12)] border-[rgba(0,61,165,0.5)] text-[#8BB8DC]"
+                          : "border-[rgba(0,61,165,0.45)] text-[#3D6080] hover:border-[rgba(0,61,165,0.6)] hover:text-[#8BB8DC]"
+                      )}
+                    >
+                      No, skip this
+                    </button>
+                  </div>
                 </div>
-                <p className="text-xs text-[#3D6080] mb-5">{t("submit.points.subtitle")}</p>
-                <div className="space-y-3">
-                  {POINTS_CRITERIA.filter(
-                    (c) => !c.applicableTo || c.applicableTo.includes(form.visaSubclass)
-                  ).map((criterion) => {
-                    // Filter nomination options to the selected visa type
-                    const visibleOptions = criterion.key === "nomination"
-                      ? criterion.options.filter((opt) => {
-                          if (opt.value === 0) return true;
-                          if (opt.value === 5) return form.visaSubclass === "190";
-                          if (opt.value === 15) return form.visaSubclass === "491";
-                          return true;
-                        })
-                      : criterion.options;
-                    const selectedIdx = pointsOptIdx[criterion.key];
-                    return (
-                      <div key={criterion.key} className="grid grid-cols-1 sm:grid-cols-2 gap-2 items-center">
-                        <label className="text-xs text-[#8BB8DC] font-medium">
-                          {t(`submit.points.${criterion.label}` as Parameters<typeof t>[0])}
-                        </label>
-                        <select
-                          className="input-field !py-2 text-sm"
-                          value={selectedIdx !== undefined ? String(selectedIdx) : ""}
-                          onChange={(e) => {
-                            const idx = e.target.value === "" ? undefined : Number(e.target.value);
-                            setPointsOptIdx((prev) => {
-                              const next = { ...prev };
-                              if (idx === undefined) delete next[criterion.key];
-                              else next[criterion.key] = idx;
-                              return next;
-                            });
-                            updatePoints(criterion.key, idx === undefined ? "" : String(visibleOptions[idx].value));
-                          }}
-                        >
-                          <option value="">{t("submit.points.selectOption")}</option>
-                          {visibleOptions.map((opt, idx) => (
-                            <option key={`${criterion.key}|${idx}`} value={String(idx)}>
-                              {opt.label}
-                            </option>
-                          ))}
-                        </select>
+
+                {shareScore === true && (
+                  <div className="mt-4 animate-fade-in">
+                    <p className="text-xs text-[#3D6080] mb-4">{t("submit.points.subtitle")}</p>
+                    <div className="space-y-3">
+                      {POINTS_CRITERIA.filter(
+                        (c) => !c.applicableTo || c.applicableTo.includes(form.visaSubclass)
+                      ).map((criterion) => {
+                        const visibleOptions = criterion.key === "nomination"
+                          ? criterion.options.filter((opt) => {
+                              if (opt.value === 0) return true;
+                              if (opt.value === 5) return form.visaSubclass === "190";
+                              if (opt.value === 15) return form.visaSubclass === "491";
+                              return true;
+                            })
+                          : criterion.options;
+                        const selectedIdx = pointsOptIdx[criterion.key];
+                        return (
+                          <div key={criterion.key} className="grid grid-cols-1 sm:grid-cols-2 gap-2 items-center">
+                            <label className="text-xs text-[#8BB8DC] font-medium">
+                              {t(`submit.points.${criterion.label}` as Parameters<typeof t>[0])}
+                            </label>
+                            <select
+                              className="input-field !py-2 text-sm"
+                              value={selectedIdx !== undefined ? String(selectedIdx) : ""}
+                              onChange={(e) => {
+                                const idx = e.target.value === "" ? undefined : Number(e.target.value);
+                                setPointsOptIdx((prev) => {
+                                  const next = { ...prev };
+                                  if (idx === undefined) delete next[criterion.key];
+                                  else next[criterion.key] = idx;
+                                  return next;
+                                });
+                                updatePoints(criterion.key, idx === undefined ? "" : String(visibleOptions[idx].value));
+                              }}
+                            >
+                              <option value="">{t("submit.points.selectOption")}</option>
+                              {visibleOptions.map((opt, idx) => (
+                                <option key={`${criterion.key}|${idx}`} value={String(idx)}>
+                                  {opt.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="mt-5 p-4 rounded-xl border border-[rgba(255,210,0,0.2)] bg-[rgba(255,210,0,0.04)] flex items-center justify-between">
+                      <div>
+                        <div className="text-xs text-[#8BB8DC]">{t("submit.points.total")}</div>
+                        <div className="text-[10px] text-[#3D6080]">{t("submit.points.minimum")}</div>
                       </div>
-                    );
-                  })}
-                </div>
-                <div className="mt-5 p-4 rounded-xl border border-[rgba(255,210,0,0.25)] bg-[rgba(255,210,0,0.05)] flex items-center justify-between">
-                  <div>
-                    <div className="text-xs text-[#8BB8DC]">{t("submit.points.total")}</div>
-                    <div className="text-[10px] text-[#3D6080]">{t("submit.points.minimum")}</div>
+                      <div className={clsx(
+                        "text-3xl font-display font-bold transition-colors",
+                        totalPoints >= POINTS_MIN ? "text-[#00A651]"
+                        : totalPoints > 0        ? "text-[#FFD200]"
+                                                 : "text-[#3D6080]"
+                      )}>
+                        {totalPoints}
+                        <span className="text-sm font-normal text-[#3D6080] ml-1">pts</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className={clsx(
-                    "text-3xl font-display font-bold transition-colors",
-                    totalPoints >= POINTS_MIN ? "text-[#00A651]"
-                    : totalPoints > 0        ? "text-[#FFD200]"
-                                             : "text-[#3D6080]"
-                  )}>
-                    {totalPoints}
-                    <span className="text-sm font-normal text-[#3D6080] ml-1">pts</span>
-                  </div>
-                </div>
+                )}
               </div>
             )}
 

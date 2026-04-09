@@ -52,6 +52,7 @@ export interface AggregatedStats {
   submissionsByMonth: Record<string, number>;
   eoiInvitedByMonth: Record<string, number>;  // "YYYY-MM" -> count of EOI invites
   grantedByMonth: Record<string, number>;      // "YYYY-MM" -> count of visas granted
+  appToGrantDays: Record<string, number[]>;    // visaSubclass -> days from app lodged to grant
 }
 
 export async function submitVisa(data: Omit<VisaSubmission, "id">): Promise<string> {
@@ -111,6 +112,7 @@ export function aggregateStats(submissions: VisaSubmission[]): AggregatedStats {
     submissionsByMonth: {},
     eoiInvitedByMonth: {},
     grantedByMonth: {},
+    appToGrantDays: {},
   };
 
   for (const sub of submissions) {
@@ -147,6 +149,18 @@ export function aggregateStats(submissions: VisaSubmission[]): AggregatedStats {
       }
     } else {
       stats.inProgress++;
+    }
+
+    // App-to-grant: visaApplicationDate → statusDate (grant)
+    if (sub.currentStatus === "grant_received" && sub.statusDate && sub.visaApplicationDate) {
+      const days = Math.round(
+        (new Date(sub.statusDate).getTime() - new Date(sub.visaApplicationDate).getTime()) /
+          (1000 * 60 * 60 * 24)
+      );
+      if (days > 0 && days < 3650) {
+        if (!stats.appToGrantDays[sub.visaSubclass]) stats.appToGrantDays[sub.visaSubclass] = [];
+        stats.appToGrantDays[sub.visaSubclass].push(days);
+      }
     }
 
     // Processing time: eoiLodgeDate (or eoi_submitted status) → grant_received
