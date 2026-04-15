@@ -1,7 +1,7 @@
 import Header from "@/components/Header";
 import NewsStateCard from "@/components/NewsStateCard";
 import { fetchAllImmigrationNews } from "@/lib/immigration-news";
-import { Clock, RefreshCw, Newspaper } from "lucide-react";
+import { Clock, RefreshCw, Newspaper, Rss, ExternalLink, Calendar } from "lucide-react";
 
 export const revalidate = 3600;
 
@@ -24,6 +24,17 @@ export default async function NewsPage() {
 
   const totalItems = groups.reduce((sum, g) => sum + g.items.length, 0);
   const activeStates = groups.filter((g) => g.items.length > 0).length;
+
+  // Flatten all items with their group's stateColor, sort newest-first, cap at 10
+  const latestHeadlines = groups
+    .flatMap((g) => g.items.map((item) => ({ ...item, stateColor: g.stateColor })))
+    .sort((a, b) => {
+      if (a.date && b.date) return b.date.localeCompare(a.date);
+      if (a.date) return -1;
+      if (b.date) return 1;
+      return 0;
+    })
+    .slice(0, 10);
 
   return (
     <div className="min-h-screen bg-[#000918] relative">
@@ -103,6 +114,59 @@ export default async function NewsPage() {
             </div>
           ))}
         </div>
+
+        {/* Latest Headlines summary */}
+        {latestHeadlines.length > 0 && (
+          <div className="glass-card mb-8 overflow-hidden">
+            <div className="flex items-center gap-2.5 px-5 py-4 border-b border-[rgba(0,61,165,0.3)]">
+              <Rss size={14} className="text-[#FFD200]" />
+              <span className="text-sm font-semibold text-[#FFD200] uppercase tracking-wider">
+                Latest Headlines
+              </span>
+              <span className="ml-auto text-[11px] text-[#3D6080]">
+                {latestHeadlines.length} most recent
+              </span>
+            </div>
+            <ul className="divide-y divide-[rgba(0,61,165,0.2)]">
+              {latestHeadlines.map((item) => (
+                <li key={item.id}>
+                  <a
+                    href={item.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-start gap-3 px-5 py-3 hover:bg-[rgba(0,43,110,0.35)] transition-colors group"
+                  >
+                    {/* State pill */}
+                    <span
+                      className="flex-shrink-0 mt-0.5 text-[10px] font-bold text-white px-1.5 py-0.5 rounded"
+                      style={{ background: (item as { stateColor?: string }).stateColor ?? "#003DA5" }}
+                    >
+                      {item.state}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-[#F0F4FF] group-hover:text-[#FFD200] transition-colors leading-snug line-clamp-2">
+                        {item.title}
+                      </p>
+                      {item.date && (
+                        <div className="flex items-center gap-1 mt-1">
+                          <Calendar size={10} className="text-[#3D6080]" />
+                          <span className="text-[11px] text-[#3D6080]">
+                            {new Date(item.date).toLocaleDateString("en-AU", {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                            })}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <ExternalLink size={12} className="flex-shrink-0 mt-1 text-[#3D6080] group-hover:text-[#FFD200] transition-colors" />
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {/* Section heading */}
         <div className="flex items-center gap-3 mb-5">
