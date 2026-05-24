@@ -1,6 +1,9 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { NextRequest } from 'next/server';
 
+const RAG_SERVER_URL = process.env.RAG_SERVER_URL ?? 'http://localhost:8001';
+const RAG_TIMEOUT_MS = 3000;
+
 const SYSTEM_PROMPT = `You are an expert Australian immigration visa consultant working with AussieVisa Tracker, a community-driven platform that tracks skilled visa processing times and EOI statistics.
 
 Your deep expertise covers:
@@ -19,6 +22,8 @@ Your deep expertise covers:
 - Australian values, genuine temporary entrant criterion, character and health requirements
 - General processing timelines and how community data on AussieVisa Tracker relates to real-world experience
 
+When <government_sources> are provided in a message, prioritise that content for facts, fees, processing times, and occupation lists — and cite the source URL. If no sources are provided, use your training knowledge.
+
 Communication style:
 - Be knowledgeable, professional, warm, and empathetic — visa journeys are stressful
 - Use clear structured responses; use bullet points or numbered steps when listing options or processes
@@ -29,6 +34,56 @@ Communication style:
 - Reference AussieVisa Tracker community data when discussing processing times, EOI cutoff trends, or state nomination quota patterns
 
 Mandatory disclaimer: When giving specific guidance, include a brief reminder: "This is general information only — for your specific circumstances, consult a MARA-registered migration agent or immigration lawyer."`;
+
+interface RagChunk {
+  content: string;
+  url: string;
+  title: string;
+  department: string;
+  source_name: string;
+  score: number;
+}
+
+async function fetchRagContext(query: string): Promise<RagChunk[]> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), RAG_TIMEOUT_MS);
+  try {
+    const res = await fetch(`${RAG_SERVER_URL}/search`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, n_results: 5 }),
+      signal: controller.signal,
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.results ?? [];
+  } catch {
+    return [];
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function buildContextBlock(chunks: RagChunk[]): string {
+  if (chunks.length === 0) return '';
+  const parts = chunks.map(
+    (c) => `[${c.department} — ${c.url}]\n${c.content}`
+  );
+  return `<government_sources>\n${parts.join('\n\n---\n\n')}\n</government_sources>\n\n`;
+}
+
+function buildSourcesFooter(chunks: RagChunk[]): string {
+  const seen = new Map<string, string>();
+  for (const c of chunks) {
+    if (!seen.has(c.url)) seen.set(c.url, c.title);
+  }
+  if (seen.size === 0) return '';
+  const lines = ['\n\n---\n**Official sources consulted:**'];
+  for (const [url, title] of seen) {
+    lines.push(`- [${title}](${url})`);
+  }
+  return lines.join('\n');
+}
 
 export async function POST(req: NextRequest) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -50,13 +105,36 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Retrieve relevant gov content for the latest user message
+    const lastUserMessage = [...messages].reverse().find((m) => m.role === 'user');
+    const ragChunks = lastUserMessage
+      ? await fetchRagContext(lastUserMessage.content)
+      : [];
+
+    // Inject retrieved context into the last user message
+    const augmentedMessages = messages.map((m, i) => {
+      if (i === messages.length - 1 && m.role === 'user' && ragChunks.length > 0) {
+        return { ...m, content: buildContextBlock(ragChunks) + m.content };
+      }
+      return m;
+    });
+
+    const sourcesFooter = buildSourcesFooter(ragChunks);
+
     const client = new Anthropic({ apiKey });
 
     const stream = client.messages.stream({
       model: 'claude-sonnet-4-6',
-      max_tokens: 1024,
-      system: SYSTEM_PROMPT,
-      messages,
+      max_tokens: 1500,
+      system: [
+        {
+          type: 'text',
+          text: SYSTEM_PROMPT,
+          // @ts-expect-error cache_control is supported but not yet in SDK types
+          cache_control: { type: 'ephemeral' },
+        },
+      ],
+      messages: augmentedMessages,
     });
 
     const readable = new ReadableStream({
@@ -72,6 +150,12 @@ export async function POST(req: NextRequest) {
                 encoder.encode(`data: ${JSON.stringify(event.delta.text)}\n\n`)
               );
             }
+          }
+          // Send sources footer as final chunk if RAG found anything
+          if (sourcesFooter) {
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify(sourcesFooter)}\n\n`)
+            );
           }
         } catch (err) {
           console.error('Stream processing error:', err);
