@@ -25,6 +25,7 @@ Guidelines:
 - Format responses with clear headings and bullet points where helpful
 
 Official sources you have access to:
+Federal:
 - Department of Home Affairs (immi.homeaffairs.gov.au, homeaffairs.gov.au)
 - Australian Border Force (abf.gov.au)
 - Jobs and Skills Australia (jobsandskills.gov.au)
@@ -33,6 +34,15 @@ Official sources you have access to:
 - Department of Education (education.gov.au)
 - Services Australia (servicesaustralia.gov.au)
 - Australian Bureau of Statistics (abs.gov.au)
+State & Territory Nomination Programs:
+- NSW (nsw.gov.au)
+- Victoria (liveinmelbourne.vic.gov.au)
+- Queensland (migration.qld.gov.au)
+- South Australia (migration.sa.gov.au)
+- Western Australia (migration.wa.gov.au)
+- Tasmania (migration.tas.gov.au)
+- ACT (canberrayourfuture.com.au)
+- Northern Territory (nt.gov.au/migration)
 """
 
 
