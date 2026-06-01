@@ -2,11 +2,21 @@ import express from 'express';
 import cors from 'cors';
 import Anthropic from '@anthropic-ai/sdk';
 import { fetchAllImmigrationNews } from './immigration-news.js';
+import { PerIpRateLimiter, CostTracker, withRetry } from './rate-limiter.js';
 
 const app = express();
 const PORT = process.env.PORT || 8080;
 const RAG_SERVER_URL = process.env.RAG_SERVER_URL ?? '';
 const RAG_TIMEOUT_MS = 3000;
+
+// Reuse a single Anthropic client across requests.
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+// Rate limiter: burst of 5, refill 1 req/s per IP.
+const chatLimiter = new PerIpRateLimiter({ capacity: 5, refillRate: 1 });
+
+// Cost tracker (in-memory; resets on redeploy).
+const costTracker = new CostTracker();
 
 app.use(express.json());
 app.use(cors({
@@ -17,9 +27,18 @@ app.use(cors({
   ],
 }));
 
-// ── Health check ─────────────────────────────────────────────────────────────
+// ── Health check ──────────────────────────────────────────────────────────────
 
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+
+// ── Internal usage report (Cloud Run logs only) ───────────────────────────────
+
+app.get('/internal/usage', (req, res) => {
+  // Only allow requests from within Cloud Run (no external path via Firebase).
+  const forwarded = req.headers['x-forwarded-for'];
+  if (forwarded) return res.status(403).json({ error: 'Forbidden' });
+  res.json(costTracker.summary());
+});
 
 // ── RAG retrieval ─────────────────────────────────────────────────────────────
 
@@ -92,9 +111,8 @@ Mandatory disclaimer: Include a brief reminder — "This is general information 
 
 // ── POST /api/chat ────────────────────────────────────────────────────────────
 
-app.post('/api/chat', async (req, res) => {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
+app.post('/api/chat', chatLimiter.middleware(), async (req, res) => {
+  if (!process.env.ANTHROPIC_API_KEY) {
     return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
   }
 
@@ -115,19 +133,28 @@ app.post('/api/chat', async (req, res) => {
     return m;
   });
 
+  // Create the stream with retry before touching the response — so we can
+  // still return a proper error status if all attempts fail.
+  let stream;
+  try {
+    stream = await withRetry(() =>
+      anthropic.messages.stream({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1500,
+        system: [{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
+        messages: augmentedMessages,
+      })
+    );
+  } catch (err) {
+    console.error('[chat] all retry attempts failed:', err?.message);
+    return res.status(503).json({ error: 'Service temporarily unavailable — please try again.' });
+  }
+
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
 
   try {
-    const client = new Anthropic({ apiKey });
-    const stream = client.messages.stream({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 1500,
-      system: [{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
-      messages: augmentedMessages,
-    });
-
     for await (const event of stream) {
       if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
         res.write(`data: ${JSON.stringify(event.delta.text)}\n\n`);
@@ -137,12 +164,18 @@ app.post('/api/chat', async (req, res) => {
     if (sourcesFooter) {
       res.write(`data: ${JSON.stringify(sourcesFooter)}\n\n`);
     }
+
+    // Record token usage for cost tracking after stream completes.
+    const final = await stream.finalMessage();
+    const usage = final.usage ?? {};
+    costTracker.record(req.clientIp, {
+      inputTokens:      usage.input_tokens ?? 0,
+      outputTokens:     usage.output_tokens ?? 0,
+      cacheReadTokens:  usage.cache_read_input_tokens ?? 0,
+      cacheWriteTokens: usage.cache_creation_input_tokens ?? 0,
+    });
   } catch (err) {
-    console.error('Chat error:', err);
-    if (!res.headersSent) {
-      res.status(500).json({ error: 'Failed to process request' });
-      return;
-    }
+    console.error('[chat] stream error:', err?.message);
   }
 
   res.end();
@@ -151,7 +184,7 @@ app.post('/api/chat', async (req, res) => {
 // ── GET /api/immigration-news ─────────────────────────────────────────────────
 
 const newsCache = { data: null, fetchedAt: 0 };
-const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+const CACHE_TTL_MS = 60 * 60 * 1000;
 
 app.get('/api/immigration-news', async (_req, res) => {
   try {
