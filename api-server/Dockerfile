@@ -5,7 +5,7 @@ WORKDIR /app
 COPY package.json ./
 RUN npm install --omit=dev
 
-COPY server.js immigration-news.js ./
+COPY server.js immigration-news.js rate-limiter.js ./
 
 ENV NODE_ENV=production
 ENV PORT=8080
