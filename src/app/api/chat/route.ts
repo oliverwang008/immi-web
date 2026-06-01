@@ -79,7 +79,7 @@ function buildSourcesFooter(chunks: RagChunk[]): string {
   }
   if (seen.size === 0) return '';
   const lines = ['\n\n---\n**Official sources consulted:**'];
-  for (const [url, title] of seen) {
+  for (const [url, title] of Array.from(seen.entries())) {
     lines.push(`- [${title}](${url})`);
   }
   return lines.join('\n');
@@ -130,7 +130,6 @@ export async function POST(req: NextRequest) {
         {
           type: 'text',
           text: SYSTEM_PROMPT,
-          // @ts-expect-error cache_control is supported but not yet in SDK types
           cache_control: { type: 'ephemeral' },
         },
       ],
