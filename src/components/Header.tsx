@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { LANGUAGES } from "@/i18n/translations";
 import { useState } from "react";
-import { Globe, BarChart2, PlusCircle, ChevronDown, X, Menu, Newspaper, Bot } from "lucide-react";
+import { Globe, BarChart2, PlusCircle, ChevronDown, X, Menu, Newspaper, Bot, Cloud } from "lucide-react";
 import clsx from "clsx";
 
 export default function Header() {
@@ -88,6 +88,18 @@ export default function Header() {
           >
             <Bot size={15} />
             AI Advisor
+          </Link>
+          <Link
+            href="/weather"
+            className={clsx(
+              "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+              pathname === "/weather"
+                ? "bg-[rgba(255,210,0,0.12)] text-[#FFD200] border border-[rgba(255,210,0,0.2)]"
+                : "text-[#8BB8DC] hover:text-[#F0F4FF] hover:bg-[rgba(0,61,165,0.3)]"
+            )}
+          >
+            <Cloud size={15} />
+            Weather
           </Link>
         </nav>
 
@@ -206,6 +218,19 @@ export default function Header() {
             >
               <Bot size={16} />
               AI Advisor
+            </Link>
+            <Link
+              href="/weather"
+              onClick={() => setMobileMenuOpen(false)}
+              className={clsx(
+                "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all",
+                pathname === "/weather"
+                  ? "bg-[rgba(255,210,0,0.12)] text-[#FFD200]"
+                  : "text-[#8BB8DC] hover:bg-[rgba(0,61,165,0.3)] hover:text-[#F0F4FF]"
+              )}
+            >
+              <Cloud size={16} />
+              Weather
             </Link>
           </div>
         </div>

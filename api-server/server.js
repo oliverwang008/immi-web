@@ -8,6 +8,7 @@ const app = express();
 const PORT = process.env.PORT || 8080;
 const RAG_SERVER_URL = process.env.RAG_SERVER_URL ?? '';
 const RAG_TIMEOUT_MS = 3000;
+const WEATHER_TIMEOUT_MS = 30000; // weather agent needs time for LLM + API calls
 
 // Reuse a single Anthropic client across requests.
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -179,6 +180,58 @@ app.post('/api/chat', chatLimiter.middleware(), async (req, res) => {
   }
 
   res.end();
+});
+
+// ── POST /api/weather/chat ────────────────────────────────────────────────────
+
+const weatherLimiter = new PerIpRateLimiter({ capacity: 10, refillRate: 0.5 });
+
+app.post('/api/weather/chat', weatherLimiter.middleware(), async (req, res) => {
+  if (!RAG_SERVER_URL) {
+    return res.status(503).json({ error: 'Weather service not configured.' });
+  }
+  const { message, session_id } = req.body;
+  if (!message || typeof message !== 'string') {
+    return res.status(400).json({ error: 'message is required' });
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), WEATHER_TIMEOUT_MS);
+  try {
+    const upstream = await fetch(`${RAG_SERVER_URL}/weather/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, session_id: session_id ?? 'default' }),
+      signal: controller.signal,
+    });
+    const data = await upstream.json();
+    if (!upstream.ok) return res.status(upstream.status).json(data);
+    res.json(data);
+  } catch (err) {
+    if (err?.name === 'AbortError') {
+      return res.status(504).json({ error: 'Weather service timed out.' });
+    }
+    console.error('[weather] error:', err?.message);
+    res.status(502).json({ error: 'Weather service unavailable.' });
+  } finally {
+    clearTimeout(timer);
+  }
+});
+
+app.post('/api/weather/reset', async (req, res) => {
+  if (!RAG_SERVER_URL) return res.json({ status: 'ok' });
+  const { session_id } = req.body;
+  try {
+    const upstream = await fetch(`${RAG_SERVER_URL}/weather/reset`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: session_id ?? 'default' }),
+    });
+    const data = await upstream.json();
+    res.json(data);
+  } catch {
+    res.json({ status: 'ok' });
+  }
 });
 
 // ── GET /api/immigration-news ─────────────────────────────────────────────────

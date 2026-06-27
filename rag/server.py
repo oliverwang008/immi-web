@@ -18,8 +18,10 @@ from pydantic import BaseModel
 
 sys.path.insert(0, os.path.dirname(__file__))
 from vectorstore import VectorStore
+from weather_agent import WeatherAgent
 
 _store: VectorStore | None = None
+_weather_sessions: dict[str, WeatherAgent] = {}
 
 
 @asynccontextmanager
@@ -178,3 +180,47 @@ def search(req: SearchRequest, request: Request):
         results=[ChunkResult(**r) for r in filtered],
         total_chunks=_store.count(),
     )
+
+
+# ── Weather agent routes ───────────────────────────────────────────────────────
+
+_weather_chat_limiter = PerIpRateLimiter(capacity=10.0, refill_rate=0.5)
+
+
+class WeatherChatRequest(BaseModel):
+    message: str
+    session_id: str = "default"
+
+
+class WeatherChatResponse(BaseModel):
+    reply: str
+    session_id: str
+
+
+class WeatherResetRequest(BaseModel):
+    session_id: str = "default"
+
+
+@app.post("/weather/chat", response_model=WeatherChatResponse)
+def weather_chat(req: WeatherChatRequest, request: Request):
+    _weather_chat_limiter.check(request)
+
+    session_id = req.session_id or "default"
+    if session_id not in _weather_sessions:
+        _weather_sessions[session_id] = WeatherAgent()
+
+    agent = _weather_sessions[session_id]
+    try:
+        reply = agent.chat(req.message)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    return WeatherChatResponse(reply=reply, session_id=session_id)
+
+
+@app.post("/weather/reset")
+def weather_reset(req: WeatherResetRequest):
+    session_id = req.session_id or "default"
+    if session_id in _weather_sessions:
+        _weather_sessions[session_id].reset()
+    return {"status": "ok", "session_id": session_id}
