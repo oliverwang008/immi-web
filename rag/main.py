@@ -2,9 +2,10 @@
 Entry point for the Australian Immigration RAG system.
 
 Usage:
-  python main.py ingest          # Scrape + index all official sites
+  python main.py ingest          # Scrape gov sites + index curated docs
+  python main.py ingest --clear  # Clear DB then re-ingest everything
+  python main.py ingest-docs     # (Re)index only docs/immigration/*.md — no scraping
   python main.py chat            # Start interactive chat
-  python main.py ingest --clear  # Clear DB then re-ingest
   python main.py stats           # Show DB stats
 """
 
@@ -20,6 +21,24 @@ from rich import print as rprint
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
 console = Console()
+
+
+def _ingest_curated(store):
+    """(Re)index the curated docs/immigration/*.md files. Returns chunks added.
+
+    Deletes each doc's existing chunks first so edits propagate on re-ingest.
+    """
+    from curated_docs import load_curated_docs
+
+    total = 0
+    for doc in load_curated_docs():
+        store.delete_document(doc.url)
+        added = store.add_document(doc)
+        total += added
+        console.print(
+            f"  [green]✓[/green] {doc.title[:40]:<40} [dim]+{added} chunks[/dim]"
+        )
+    return total
 
 
 def cmd_ingest(clear: bool = False):
@@ -50,11 +69,30 @@ def cmd_ingest(clear: bool = False):
             f"[dim]+{added} chunks[/dim]"
         )
 
+    console.print("\n[bold]Indexing curated reference docs[/bold]")
+    total_chunks += _ingest_curated(store)
+
     console.print(Panel(
         f"[bold]Ingestion complete[/bold]\n"
-        f"Documents: {total_docs}\n"
-        f"Total chunks: {total_chunks}\n"
+        f"Scraped documents: {total_docs}\n"
+        f"Total chunks added: {total_chunks}\n"
         f"DB total: {store.count()} chunks",
+        title="Done"
+    ))
+
+
+def cmd_ingest_docs():
+    from vectorstore import VectorStore
+
+    store = VectorStore()
+    console.print(Panel(
+        "[bold green]Indexing curated reference docs[/bold green]\n"
+        "docs/immigration/*.md — markdown-aware chunking, no scraping.",
+        title="Docs Ingestion"
+    ))
+    added = _ingest_curated(store)
+    console.print(Panel(
+        f"[bold]Done[/bold]\nChunks added: {added}\nDB total: {store.count()} chunks",
         title="Done"
     ))
 
@@ -127,6 +165,8 @@ def main():
         cmd_chat()
     elif args[0] == "ingest":
         cmd_ingest(clear="--clear" in args)
+    elif args[0] == "ingest-docs":
+        cmd_ingest_docs()
     elif args[0] == "stats":
         cmd_stats()
     else:
