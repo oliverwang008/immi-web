@@ -71,13 +71,25 @@ function buildContextBlock(chunks) {
 }
 
 function buildSourcesFooter(chunks) {
-  const seen = new Map();
+  // Split official gov URLs (clickable) from curated in-repo docs (local://),
+  // which are our own reference notes, not official sources, and aren't links.
+  const official = new Map();
+  const reference = new Map();
   for (const c of chunks) {
-    if (!seen.has(c.url)) seen.set(c.url, c.title);
+    const target = c.url && c.url.startsWith('local://') ? reference : official;
+    if (!target.has(c.url)) target.set(c.url, c.title);
   }
-  if (!seen.size) return '';
-  const lines = ['\n\n---\n**Official sources consulted:**'];
-  for (const [url, title] of seen) lines.push(`- [${title}](${url})`);
+  if (!official.size && !reference.size) return '';
+  const lines = ['\n\n---'];
+  if (official.size) {
+    lines.push('**Official sources consulted:**');
+    for (const [url, title] of official) lines.push(`- [${title}](${url})`);
+  }
+  if (reference.size) {
+    if (official.size) lines.push('');
+    lines.push('**Reference notes:**');
+    for (const [, title] of reference) lines.push(`- ${title}`);
+  }
   return lines.join('\n');
 }
 

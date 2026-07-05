@@ -73,14 +73,28 @@ function buildContextBlock(chunks: RagChunk[]): string {
 }
 
 function buildSourcesFooter(chunks: RagChunk[]): string {
-  const seen = new Map<string, string>();
+  // Split official gov URLs (clickable) from curated in-repo docs (local://),
+  // which are our own reference notes, not official sources, and aren't links.
+  const official = new Map<string, string>();
+  const reference = new Map<string, string>();
   for (const c of chunks) {
-    if (!seen.has(c.url)) seen.set(c.url, c.title);
+    const target = c.url && c.url.startsWith('local://') ? reference : official;
+    if (!target.has(c.url)) target.set(c.url, c.title);
   }
-  if (seen.size === 0) return '';
-  const lines = ['\n\n---\n**Official sources consulted:**'];
-  for (const [url, title] of Array.from(seen.entries())) {
-    lines.push(`- [${title}](${url})`);
+  if (official.size === 0 && reference.size === 0) return '';
+  const lines = ['\n\n---'];
+  if (official.size > 0) {
+    lines.push('**Official sources consulted:**');
+    for (const [url, title] of Array.from(official.entries())) {
+      lines.push(`- [${title}](${url})`);
+    }
+  }
+  if (reference.size > 0) {
+    if (official.size > 0) lines.push('');
+    lines.push('**Reference notes:**');
+    for (const title of Array.from(reference.values())) {
+      lines.push(`- ${title}`);
+    }
   }
   return lines.join('\n');
 }
