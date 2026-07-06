@@ -102,6 +102,15 @@ class VectorStore:
             ))
         return output
 
+    def delete_document(self, url: str) -> None:
+        """Remove all chunks for a given source url.
+
+        Chunk ids are derived from url + index, so re-adding an edited document
+        without deleting first would skip changed chunks (id already exists) and
+        orphan any removed tail chunks. Call this before re-adding to refresh.
+        """
+        self._collection.delete(where={"url": url})
+
     def count(self) -> int:
         return self._collection.count()
 
