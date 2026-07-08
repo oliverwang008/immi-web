@@ -141,7 +141,8 @@ _search_limiter = PerIpRateLimiter(capacity=5.0, refill_rate=1.0)
 class SearchRequest(BaseModel):
     query: str
     n_results: int = 5
-    min_score: float = 0.3
+    min_score: float = 0.3      # only applied in "vector" mode (cosine cutoff)
+    mode: str = "hybrid"        # "hybrid" (BM25 + vector, RRF) or "vector"
 
 
 class ChunkResult(BaseModel):
@@ -173,11 +174,15 @@ def search(req: SearchRequest, request: Request):
     if not _store or _store.count() == 0:
         return SearchResponse(results=[], total_chunks=0)
 
-    raw = _store.search(req.query, n_results=req.n_results)
-    filtered = [r for r in raw if r["score"] >= req.min_score]
+    if req.mode == "vector":
+        raw = _store.search(req.query, n_results=req.n_results)
+        # cosine similarity is comparable to a 0-1 cutoff; RRF scores are not.
+        raw = [r for r in raw if r["score"] >= req.min_score]
+    else:
+        raw = _store.hybrid_search(req.query, n_results=req.n_results)
 
     return SearchResponse(
-        results=[ChunkResult(**r) for r in filtered],
+        results=[ChunkResult(**r) for r in raw],
         total_chunks=_store.count(),
     )
 

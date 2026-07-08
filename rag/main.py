@@ -7,6 +7,7 @@ Usage:
   python main.py ingest-docs     # (Re)index only docs/immigration/*.md — no scraping
   python main.py chat            # Start interactive chat
   python main.py stats           # Show DB stats
+  python main.py inspect [N]     # Browse N stored chunks (--source "<name>" to filter)
 """
 
 import sys
@@ -159,6 +160,36 @@ def cmd_stats():
     ))
 
 
+def cmd_inspect(args: list):
+    """Browse stored chunks. Usage: inspect [N] [--source "<source_name>"]"""
+    from vectorstore import VectorStore
+
+    limit = next((int(a) for a in args if a.isdigit()), 10)
+    source = None
+    if "--source" in args:
+        i = args.index("--source")
+        if i + 1 < len(args):
+            source = args[i + 1]
+
+    store = VectorStore()
+    data = store.peek(limit=limit, source_name=source)
+    ids = data.get("ids", [])
+    docs = data.get("documents", [])
+    metas = data.get("metadatas", [])
+
+    console.print(Panel(
+        f"[bold]Showing {len(ids)} of {store.count()} chunks[/bold]"
+        + (f"\nFilter: source_name = {source}" if source else ""),
+        title="Chunk Inspector"
+    ))
+    for cid, doc, meta in zip(ids, docs, metas):
+        preview = (doc[:280] + "…") if len(doc) > 280 else doc
+        console.print(
+            f"[cyan]{cid}[/cyan]  [dim]{meta.get('source_name')} · {meta.get('url')}[/dim]\n"
+            f"{preview}\n"
+        )
+
+
 def main():
     args = sys.argv[1:]
     if not args or args[0] == "chat":
@@ -169,6 +200,8 @@ def main():
         cmd_ingest_docs()
     elif args[0] == "stats":
         cmd_stats()
+    elif args[0] == "inspect":
+        cmd_inspect(args[1:])
     else:
         console.print(f"[red]Unknown command: {args[0]}[/red]")
         console.print(__doc__)
